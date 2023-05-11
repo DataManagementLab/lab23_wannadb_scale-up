@@ -146,7 +146,9 @@ class MainWindow(QMainWindow):
         else:
             confirmed = True
         if confirmed:
-            path, ok = QFileDialog.getOpenFileName(self, "Choose a document collection .bson file!")
+            path, ok = QFileDialog.getOpenFileName(
+                self, "Choose a document collection .bson file!", filter="BSON Files (*.bson)"
+            )
             if ok:
                 self.to_busy_state()
                 # noinspection PyUnresolvedReferences
@@ -156,7 +158,9 @@ class MainWindow(QMainWindow):
         logger.info("Execute task 'save_document_base_to_bson_task'.")
 
         if self.document_base is not None:
-            path, ok = QFileDialog.getSaveFileName(self, "Choose where to save the document collection .bson file!")
+            path, ok = QFileDialog.getSaveFileName(
+                self, "Choose where to save the document collection .bson file!", filter="BSON Files (*.bson)"
+            )
             if ok:
                 self.to_busy_state()
                 # noinspection PyUnresolvedReferences
@@ -231,7 +235,8 @@ class MainWindow(QMainWindow):
         logger.info("Execute task 'save_statistics_to_json_task'.")
 
         if self.statistics is not None:
-            path = str(QFileDialog.getSaveFileName(self, "Choose where to save the statistics .json file!")[0])
+            path = str(QFileDialog.getSaveFileName(
+                self, "Choose where to save the statistics .json file!", filter="JSON Files (*.json)")[0])
             if path != "":
                 self.to_busy_state()
                 # noinspection PyUnresolvedReferences
@@ -265,7 +270,8 @@ class MainWindow(QMainWindow):
         logger.info("Execute task 'save_table_to_csv_task'.")
 
         if self.document_base is not None:
-            path = str(QFileDialog.getSaveFileName(self, "Choose where to save the table .csv file!")[0])
+            path = str(QFileDialog.getSaveFileName(
+                self, "Choose where to save the table .csv file!", filter="CSV Files (*.csv)")[0])
             if path != "":
                 self.to_busy_state()
                 # noinspection PyUnresolvedReferences
