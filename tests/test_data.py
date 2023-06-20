@@ -5,6 +5,19 @@ import pytest
 from wannadb.data.data import Attribute, Document, DocumentBase, InformationNugget
 from wannadb.data.signals import CachedDistanceSignal, LabelSignal, SentenceStartCharsSignal, CurrentMatchIndexSignal
 
+from wannadb.configuration import Pipeline
+from wannadb.data.data import Document, DocumentBase
+from wannadb.interaction import EmptyInteractionCallback
+from wannadb.preprocessing.embedding import BERTContextSentenceEmbedder, RelativePositionEmbedder, SBERTTextEmbedder, SBERTLabelEmbedder, FastTextLabelEmbedder
+from wannadb.preprocessing.extraction import StanzaNERExtractor, SpacyNERExtractor
+from wannadb.preprocessing.label_paraphrasing import OntoNotesLabelParaphraser, SplitAttributeNameLabelParaphraser
+from wannadb.preprocessing.normalization import CopyNormalizer
+from wannadb.preprocessing.other_processing import ContextSentenceCacher
+from wannadb.resources import ResourceManager
+from wannadb.statistics import Statistics
+from wannadb.status import EmptyStatusCallback
+from wannadb.statistics import Statistics
+
 
 @pytest.fixture
 def documents() -> List[Document]:
@@ -80,6 +93,13 @@ def document_base(documents, information_nuggets, attributes) -> DocumentBase:
     documents[0].attribute_mappings[attributes[0].name] = [information_nuggets[0]]
     documents[0].attribute_mappings[attributes[1].name] = []
 
+    return DocumentBase(
+        documents=documents[:-1],
+        attributes=attributes[:-1]
+    )
+
+@pytest.fixture
+def extraction_document_base(documents: List[Document],attributes: List[Attribute]) -> DocumentBase:
     return DocumentBase(
         documents=documents[:-1],
         attributes=attributes[:-1]
@@ -276,3 +296,37 @@ def test_document_base(documents, information_nuggets, attributes, document_base
     copied_document_base: DocumentBase = DocumentBase.from_bson(bson_bytes)
     assert document_base == copied_document_base
     assert copied_document_base == document_base
+
+    def test_extraction(extraction_document_base : document_base)-> None:
+
+        with ResourceManager():
+            default_pipeline = Pipeline([
+                StanzaNERExtractor(),
+                        SpacyNERExtractor("SpacyEnCoreWebLg"),
+                        ContextSentenceCacher(),
+                        CopyNormalizer(),
+                        OntoNotesLabelParaphraser(),
+                        SplitAttributeNameLabelParaphraser(do_lowercase=True, splitters=[" ", "_"]),
+                        SBERTLabelEmbedder("SBERTBertLargeNliMeanTokensResource"),
+                        SBERTTextEmbedder("SBERTBertLargeNliMeanTokensResource"),
+                        BERTContextSentenceEmbedder("BertLargeCasedResource"),
+                        RelativePositionEmbedder()
+                    ])
+            statistics = Statistics(do_collect=True)
+            statistics["preprocessing"]["config"] = default_pipeline.to_config()
+
+            default_pipeline(
+             document_base=extraction_document_base,
+             interaction_callback=EmptyInteractionCallback(),
+             status_callback=EmptyStatusCallback(),
+             statistics=statistics["preprocessing"]
+         )
+
+        assert len(extraction_document_base.documents) == 3
+        assert len(extraction_document_base.nuggets) == 70
+        assert statistics["preprocessing"]["runtime"] < 40.
+
+        number_signals = 0
+        for nugget in  extraction_document_base.nuggets:
+         number_signals= number_signals+len(nugget._signals)
+        assert number_signals == 630
