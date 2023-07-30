@@ -297,7 +297,7 @@ def test_document_base(documents, information_nuggets, attributes, document_base
     assert document_base == copied_document_base
     assert copied_document_base == document_base
 
-    def test_extraction(extraction_document_base : document_base)-> None:
+def test_extraction(extraction_document_base : document_base)-> None:
 
         with ResourceManager():
             default_pipeline = Pipeline([

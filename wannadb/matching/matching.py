@@ -134,7 +134,7 @@ class RankingBasedMatcher(BaseMatcher):
             tik: float = time.time()
 
             distances: np.ndarray = self._distance.compute_distances(
-                [attribute], document_base.nuggets, statistics["distance"]
+                [attribute], document_base, statistics["distance"]
             )[0]
             for nugget, distance in zip(document_base.nuggets, distances):
                 nugget[CachedDistanceSignal] = CachedDistanceSignal(distance)
