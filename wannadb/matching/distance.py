@@ -1,7 +1,7 @@
 import abc
 import logging
 from collections.abc import Collection
-from typing import Any, Union
+from typing import Any, Union, Dict
 
 import numpy as np
 from scipy.spatial.distance import cosine
@@ -12,6 +12,9 @@ from wannadb.data.data import Attribute, InformationNugget
 from wannadb.data.signals import ContextSentenceEmbeddingSignal, LabelEmbeddingSignal, \
     POSTagsSignal, RelativePositionSignal, TextEmbeddingSignal
 from wannadb.statistics import Statistics
+from wannadb.data.data import DocumentBase, Attribute
+from wannadb.data.vector_database import vectordb
+from pymilvus import Collection as pymilvus_collection
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -76,6 +79,7 @@ class BaseDistance(BaseConfigurableElement, abc.ABC):
             for y_ix, y in enumerate(ys):
                 res[x_ix, y_ix] = self.compute_distance(x, y, statistics)
         return res
+    
 
 
 ########################################################################################################################
