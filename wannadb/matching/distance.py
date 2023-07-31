@@ -12,9 +12,8 @@ from wannadb.data.data import Attribute, InformationNugget
 from wannadb.data.signals import ContextSentenceEmbeddingSignal, LabelEmbeddingSignal, \
     POSTagsSignal, RelativePositionSignal, TextEmbeddingSignal
 from wannadb.statistics import Statistics
-from wannadb.data.data import DocumentBase, Attribute
-from wannadb.data.vector_database import vectordb
-from pymilvus import Collection as pymilvus_collection
+from wannadb.data.data import  Attribute
+
 
 logger: logging.Logger = logging.getLogger(__name__)
 
