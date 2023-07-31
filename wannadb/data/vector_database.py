@@ -21,6 +21,7 @@ from wannadb.data.signals import LabelEmbeddingSignal, TextEmbeddingSignal, Cont
 from scipy.spatial.distance import cosine
 from sklearn.metrics.pairwise import cosine_distances
 
+
 from wannadb.configuration import Pipeline
 from wannadb.data.data import Document, DocumentBase
 from wannadb.interaction import EmptyInteractionCallback
@@ -154,197 +155,6 @@ class vectordb:
         logger.info("Indexing finished")
         logger.info("Extraction finished")
     
-'''  def compute_distance(self, documentBase : DocumentBase) -> dict:
-        """
-        Compute distance between nuggets
-        """
-        search_params = {"metric_type": "L2", "params": {"nprobe": 10}, "offset": 0}
-        embeddding_signals = ['LabelEmbeddingSignal', 'TextEmbeddingSignal', 'ContextSentenceEmbeddingSignal']
-
-        document_names = [re.sub('[^a-zA-Z0-9 \n\.]', '_', document.name) for document in document_base.documents]    
-        
-        final_results = {}
-
-        #for every document in the document base
-        for document_name in document_names:
-            collection = Collection(document_name)
-            collection.load()
-            document_results= {}
-
-            print(collection.name)
-            print(collection.num_entities)
-        
-            #for every attribute in the document base
-            for attribute in attributes:
-                distance_results = []
-
-                #for every embedding signal in the attribute
-                for i in [signal.identifier for signal in attribute.signals.values() if signal.identifier in embeddding_signals]:
-                    #Get the embeddings for the attribute
-                    attribute_embeddings= [attribute.signals[i].value]
-
-                    #Compute the distance between the embeddings of the attribute and the embeddings of the nuggets
-                    results = collection.search(
-                         data = attribute_embeddings,
-                         anns_field="embedding_value",
-                         param=search_params,
-                         limit=10,
-                         expr = f"embedding_type == '{i}'"
-                    )
-                    #Create dict with the nugget ids and their distance to the attribute for the current embedding signal
-                    distance_results.append(dict(zip(results[0].ids, results[0].distances)))
-                    #print(f"Attribute: {attribute.name} Embedding Signal: {i}")
-                    #print(distance_results[-1])
-                temp = {}
-                #print(distance_results)
-
-                #for every distance result of document and attributes
-                for i in range(len(distance_results)):
-                    temp = mergeDictionary(temp, distance_results[i])
-                    #print(f"temp: {temp}")
-                document_results[attribute.name] = temp
-                final_results[document_name] = document_results
-                #print(f"final_results: {final_results}")
-        return final_results
-                
-    def mergeDictionary(dict_1, dict_2):
-     dict_3 = {**dict_1, **dict_2}
-     for key, value in dict_3.items():
-       if key in dict_1 and key in dict_2:
-            dict_3[key] = [value , dict_1[key]]
-     return dict_3
-'''
-
-
-
-
-#Tests
-def documents() -> List[Document]:
-    return [
-        Document(
-            "document-0",
-            "Wilhelm Conrad Röntgen (/ˈrɛntɡən, -dʒən, ˈrʌnt-/; [ˈvɪlhɛlm ˈʁœntɡən]; 27 March 1845 – 10 "
-            "February 1923) was a German physicist, who, on 8 November 1895, produced and detected "
-            "electromagnetic radiation in a wavelength range known as X-rays or Röntgen rays, an achievement "
-            "that earned him the first Nobel Prize in Physics in 1901. In honour of his accomplishments, in "
-            "2004 the International Union of Pure and Applied Chemistry (IUPAC) named element 111, "
-            "roentgenium, a radioactive element with multiple unstable isotopes, after him."
-        ),
-        Document(
-            "document-1",
-            "Wilhelm Carl Werner Otto Fritz Franz Wien ([ˈviːn]; 13 January 1864 – 30 August 1928) was a "
-            "German physicist who, in 1893, used theories about heat and electromagnetism to deduce Wien's "
-            "displacement law, which calculates the emission of a blackbody at any temperature from the "
-            "emission at any one reference temperature. He also formulated an expression for the black-body "
-            "radiation which is correct in the photon-gas limit. His arguments were based on the notion of "
-            "adiabatic invariance, and were instrumental for the formulation of quantum mechanics. Wien "
-            "received the 1911 Nobel Prize for his work on heat radiation. He was a cousin of Max Wien, "
-            "inventor of the Wien bridge."
-        )
-    ]
-
-
-def create_random_float_vector_dimension_1024() -> List[float]:
-    return [random.random() for _ in range(1024)]
-
-
-def attributes() -> List[Attribute]:
-    name_attr = Attribute('name')
-    name_attr.__setitem__(key='LabelEmbeddingSignal', value=create_random_float_vector_dimension_1024())
-    name_attr.__setitem__(key='TextEmbeddingSignal', value=create_random_float_vector_dimension_1024())
-    month_attr = Attribute('month')
-    month_attr.__setitem__(key='LabelEmbeddingSignal', value=create_random_float_vector_dimension_1024())
-    month_attr.__setitem__(key='TextEmbeddingSignal', value=create_random_float_vector_dimension_1024())
-    year_attr = Attribute('year')
-    year_attr.__setitem__(key='LabelEmbeddingSignal', value=create_random_float_vector_dimension_1024())
-    year_attr.__setitem__(key='TextEmbeddingSignal', value=create_random_float_vector_dimension_1024())
-    return [
-        name_attr,
-        month_attr,
-        year_attr
-    ]
-
-
-def information_nuggets(documents) -> List[InformationNugget]:
-    nugget_one = InformationNugget(documents[0], 0, 22)
-    nugget_one.__setitem__(key='LabelEmbeddingSignal', value=create_random_float_vector_dimension_1024())
-    nugget_one.__setitem__(key='TextEmbeddingSignal', value=create_random_float_vector_dimension_1024())
-    nugget_one.__setitem__(key='LabelSignal', value='test1')
-    nugget_two = InformationNugget(documents[0], 56, 123)
-    nugget_two.__setitem__(key='LabelEmbeddingSignal', value=create_random_float_vector_dimension_1024())
-    nugget_two.__setitem__(key='TextEmbeddingSignal', value=create_random_float_vector_dimension_1024())
-    nugget_two.__setitem__(key='LabelSignal', value='test2')
-    nugget_three = InformationNugget(documents[1], 165, 176)
-    nugget_three.__setitem__(key='LabelEmbeddingSignal', value=create_random_float_vector_dimension_1024())
-    nugget_three.__setitem__(key='TextEmbeddingSignal', value=create_random_float_vector_dimension_1024())
-    nugget_three.__setitem__(key='LabelSignal', value='test3')
-    nugget_four = InformationNugget(documents[1], 234, 246)
-    nugget_four.__setitem__(key='LabelEmbeddingSignal', value=create_random_float_vector_dimension_1024())
-    nugget_four.__setitem__(key='TextEmbeddingSignal', value=create_random_float_vector_dimension_1024())
-    nugget_four.__setitem__(key='LabelSignal', value='test4')
-    return [
-        nugget_one,
-        nugget_two,
-        nugget_three,
-        nugget_four,    
-    ]
-
-
-def document_base(documents, information_nuggets, attributes) -> DocumentBase:
-    # link nuggets to documents
-    for nugget in information_nuggets:
-        nugget.document.nuggets.append(nugget)
-
-    return DocumentBase(
-        documents=documents,
-        attributes=attributes
-    )
-
-documents = documents()
-attributes = attributes()
-information_nuggets = information_nuggets(documents)
-document_base = document_base(documents, information_nuggets, attributes)
-
-
-search_params = {"metric_type": "L2", "params": {"nprobe": 10}, "offset": 0}
-embeddding_signals = ['LabelEmbeddingSignal', 'TextEmbeddingSignal', 'ContextSentenceEmbeddingSignal']
-        
-final_results = {}
-
-with vectordb() as vb:
-    for i in utility.list_collections():
-                utility.drop_collection(i)
-
-    vb.extract_nuggets(document_base)
-
-    start_time = time.time()
-    embedding_collection = Collection("Embeddings")
-    embedding_collection.load()
-    #dist_collection = Collection("Distances")
-    #dist_collection.load()
-
-    distances={}
-    #for every attribute in the document base
-    for attribute in attributes:
-        distances[attribute.name]={}
-        #for every embedding signal in the attribute
-        for i in [signal.identifier for signal in attribute.signals.values() if signal.identifier in embeddding_signals]:
-
-            #Get the embeddings for the attribute
-            attribute_embeddings= [attribute.signals[i].value]
-
-            #Compute the distance between the embeddings of the attribute and the embeddings of the nuggets
-            results = embedding_collection.search(
-                data = attribute_embeddings,
-                anns_field="embedding_value",
-                param=search_params,
-                limit=10,
-                expr = f"embedding_type == '{i}'"
-                )       
-            distances[attribute.name][i]= dict(zip(results[0].ids, results[0].distances))
-    print(distances)
-print("VDB:--- %s seconds ---" % (time.time() - start_time))
-
 
 def compute_distances(
             xs,
@@ -431,5 +241,77 @@ def compute_distances(
             print("Without VDB:--- %s seconds ---" % (time.time() - start_time))
             return np.divide(distances, np.sum(actually_present))
 
-compute_distances(document_base.nuggets, document_base.attributes)
+
+import datasets.corona.corona as dataset
+
+with ResourceManager() as resource_manager:
+    documents = dataset.load_dataset()
+    document_base = DocumentBase(documents=[Document(doc['id'], doc['text']) for doc in documents], 
+                             attributes=[Attribute(attribute) for attribute in dataset.ATTRIBUTES])
+
+    # preprocess the data
+    preprocessing_phase = Pipeline([
+                        StanzaNERExtractor(),
+                        SpacyNERExtractor("SpacyEnCoreWebLg"),
+                        ContextSentenceCacher(),
+                        CopyNormalizer(),
+                        OntoNotesLabelParaphraser(),
+                        SplitAttributeNameLabelParaphraser(do_lowercase=True, splitters=[" ", "_"]),
+                        SBERTLabelEmbedder("SBERTBertLargeNliMeanTokensResource"),
+                        SBERTTextEmbedder("SBERTBertLargeNliMeanTokensResource"),
+                        BERTContextSentenceEmbedder("BertLargeCasedResource"),
+                        RelativePositionEmbedder()
+        ])
+
+    preprocessing_phase(
+            document_base,
+            EmptyInteractionCallback(),
+            EmptyStatusCallback(),
+            Statistics(do_collect=False)
+        )
+   
+    print(f"Document base has {len(document_base.documents)} documents, {document_base.nuggets} nuggets and {len(document_base.attributes)} attributes.")
+    print(f"Document base has {len([nugget for nugget in document_base.nuggets if 'LabelEmbeddingSignal' in nugget.signals.keys()])} nugget LabelEmbeddings.")
+    print(f"Document base has { len([attribute for attribute in document_base.attributes if 'LabelEmbeddingSignal' in attribute.signals.keys()])} attribute LabelEmbeddings.")
+
+    search_params = {"metric_type": "L2", "params": {"nprobe": 10}, "offset": 0}
+    embeddding_signals = ['LabelEmbeddingSignal', 'TextEmbeddingSignal', 'ContextSentenceEmbeddingSignal']
+        
+    
+
+    with vectordb() as vb:
+        for i in utility.list_collections():
+                utility.drop_collection(i)
+
+        vb.extract_nuggets(document_base)
+
+        start_time = time.time()
+        embedding_collection = Collection("Embeddings")
+        embedding_collection.load()
+        #dist_collection = Collection("Distances")
+        #dist_collection.load()
+
+        distances={}
+        #for every attribute in the document base
+        for attribute in document_base.attributes:
+            distances[attribute.name]={}
+            #for every embedding signal in the attribute
+            for i in [signal.identifier for signal in attribute.signals.values() if signal.identifier in embeddding_signals]:
+
+                #Get the embeddings for the attribute
+                attribute_embeddings= [attribute.signals[i].value]
+
+                #Compute the distance between the embeddings of the attribute and the embeddings of the nuggets
+                results = embedding_collection.search(
+                    data = attribute_embeddings,
+                    anns_field="embedding_value",
+                    param=search_params,
+                    limit=10,
+                    expr = f"embedding_type == '{i}'"
+                )       
+                distances[attribute.name][i]= dict(zip(results[0].ids, results[0].distances))
+    print(distances)
+    print("VDB:--- %s seconds ---" % (time.time() - start_time))
+    compute_distances(document_base.nuggets, document_base.attributes)
+
 
