@@ -21,6 +21,18 @@ from wannadb.data.signals import LabelEmbeddingSignal, TextEmbeddingSignal, Cont
 from scipy.spatial.distance import cosine
 from sklearn.metrics.pairwise import cosine_distances
 
+from wannadb.configuration import Pipeline
+from wannadb.data.data import Document, DocumentBase
+from wannadb.interaction import EmptyInteractionCallback
+from wannadb.preprocessing.embedding import BERTContextSentenceEmbedder, RelativePositionEmbedder, SBERTTextEmbedder, SBERTLabelEmbedder, FastTextLabelEmbedder
+from wannadb.preprocessing.extraction import StanzaNERExtractor, SpacyNERExtractor
+from wannadb.preprocessing.label_paraphrasing import OntoNotesLabelParaphraser, SplitAttributeNameLabelParaphraser
+from wannadb.preprocessing.normalization import CopyNormalizer
+from wannadb.preprocessing.other_processing import ContextSentenceCacher
+from wannadb.resources import ResourceManager
+from wannadb.statistics import Statistics
+from wannadb.status import EmptyStatusCallback
+
 # Nugget schema
 id = FieldSchema(
     name="id",
@@ -292,13 +304,6 @@ documents = documents()
 attributes = attributes()
 information_nuggets = information_nuggets(documents)
 document_base = document_base(documents, information_nuggets, attributes)
-
-def mergeDictionary(dict_1, dict_2):
-   dict_3 = {**dict_1, **dict_2}
-   for key, value in dict_3.items():
-       if key in dict_1 and key in dict_2:
-               dict_3[key] = [value , dict_1[key]]
-   return dict_3
 
 
 search_params = {"metric_type": "L2", "params": {"nprobe": 10}, "offset": 0}
