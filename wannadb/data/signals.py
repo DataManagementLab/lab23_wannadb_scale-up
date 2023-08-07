@@ -320,6 +320,12 @@ class CurrentMatchIndexSignal(BaseIntSignal):
     identifier: str = "CurrentMatchIndexSignal"
     do_serialize: bool = False
 
+@register_signal
+class NewCurrentMatchIndexSignal(BaseStringSignal):
+    """Type identifier of the nugget's value type."""
+    identifier: str = "NewCurrentMatchIndexSignal"
+    do_serialize: bool = True
+
 
 @register_signal
 class POSTagsSignal(BaseStringListSignal):

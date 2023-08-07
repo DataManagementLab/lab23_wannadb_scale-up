@@ -1,0 +1,291 @@
+         63165370 function calls (63121309 primitive calls) in 181.896 seconds
+
+   Ordered by: cumulative time
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+  905/704    0.022    0.000  126.994    0.180 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\decorators.py:97(handler)
+  905/704    0.009    0.000  126.976    0.180 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\decorators.py:128(handler)
+  905/704    0.018    0.000  126.970    0.180 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\decorators.py:27(handler)
+        1    0.000    0.000  102.871  102.871 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\orm\collection.py:392(load)
+        1    0.000    0.000  102.871  102.871 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\grpc_handler.py:658(load_collection)
+        1    0.007    0.007  102.503  102.503 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\grpc_handler.py:678(wait_for_loading_collection)
+      199  101.408    0.510  101.408    0.510 {built-in method time.sleep}
+      700    7.109    0.010   44.653    0.064 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\wannadb\matching\distance.py:186(compute_distances)
+     1811    0.015    0.000   24.618    0.014 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\threading.py:280(wait)
+     5430   24.589    0.005   24.589    0.005 {method 'acquire' of '_thread.lock' objects}
+      904    0.013    0.000   24.183    0.027 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\grpc\_channel.py:727(result)
+      700    0.014    0.000   24.179    0.035 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\orm\collection.py:557(search)
+      904    0.006    0.000   24.168    0.027 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\grpc\_common.py:111(wait)
+      907    0.006    0.000   24.160    0.027 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\grpc\_common.py:105(_wait_once)
+      700    0.023    0.000   24.074    0.034 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\grpc_handler.py:444(search)
+      700    0.021    0.000   23.766    0.034 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\grpc_handler.py:412(_execute_search_requests)
+      700    1.678    0.002   21.465    0.031 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\sklearn\metrics\pairwise.py:869(cosine_distances)
+      700    0.016    0.000   19.655    0.028 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\sklearn\metrics\pairwise.py:1211(cosine_similarity)
+     2800   14.453    0.005   14.453    0.005 {built-in method numpy.array}
+     1400    2.540    0.002   14.340    0.010 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\sklearn\preprocessing\_data.py:1733(normalize)
+     2800    0.069    0.000   13.642    0.005 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\sklearn\utils\validation.py:486(check_array)
+9100/7700    0.029    0.000    9.657    0.001 {built-in method numpy.core._multiarray_umath.implement_array_function}
+  5665100    4.568    0.000    7.748    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\wannadb\data\data.py:103(__setitem__)
+     2800    0.071    0.000    7.612    0.003 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\sklearn\utils\validation.py:90(_assert_all_finite)
+     4200    0.008    0.000    7.525    0.002 <__array_function__ internals>:2(sum)
+     2800    0.017    0.000    7.522    0.003 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\sklearn\utils\extmath.py:870(_safe_accumulator_op)
+     4200    0.017    0.000    7.507    0.002 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\numpy\core\fromnumeric.py:2123(sum)
+     4200    0.024    0.000    7.488    0.002 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\numpy\core\fromnumeric.py:69(_wrapreduction)
+     4200    7.458    0.002    7.458    0.002 {method 'reduce' of 'numpy.ufunc' objects}
+      700    1.162    0.002    5.224    0.007 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\wannadb\matching\distance.py:244(<listcomp>)
+  5665100    3.215    0.000    4.062    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\wannadb\data\data.py:89(__getitem__)
+      700    0.007    0.000    3.988    0.006 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\sklearn\metrics\pairwise.py:63(check_pairwise_arrays)
+ 17051526    1.909    0.000    3.517    0.000 {built-in method builtins.isinstance}
+     1400    0.028    0.000    2.046    0.001 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\sklearn\utils\extmath.py:51(row_norms)
+     1400    0.005    0.000    2.017    0.001 <__array_function__ internals>:2(einsum)
+     1400    0.003    0.000    1.997    0.001 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\numpy\core\einsumfunc.py:997(einsum)
+     1400    1.994    0.001    1.994    0.001 {built-in method numpy.core._multiarray_umath.c_einsum}
+  5665800    1.989    0.000    1.989    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\wannadb\data\signals.py:35(__init__)
+  5665800    1.837    0.000    1.837    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\wannadb\data\data.py:84(signals)
+  5670000    0.763    0.000    1.608    0.000 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\abc.py:96(__instancecheck__)
+      700    1.308    0.002    1.310    0.002 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\sklearn\utils\extmath.py:120(safe_sparse_dot)
+      200    0.008    0.000    1.071    0.005 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\grpc_handler.py:742(get_loading_progress)
+      904    0.012    0.000    0.942    0.001 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\grpc\_channel.py:959(future)
+      904    0.012    0.000    0.847    0.001 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\grpc\_channel.py:1276(create)
+  5670000    0.837    0.000    0.845    0.000 {built-in method _abc._abc_instancecheck}
+      904    0.021    0.000    0.619    0.001 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\grpc\_channel.py:1253(_run_channel_spin_thread)
+  5666500    0.561    0.000    0.561    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\wannadb\data\signals.py:242(value)
+      904    0.006    0.000    0.554    0.001 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\threading.py:851(start)
+      904    0.008    0.000    0.474    0.001 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\threading.py:556(wait)
+     1400    0.338    0.000    0.383    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\wannadb\data\data.py:348(nuggets)
+  5668600    0.327    0.000    0.327    0.000 {method 'keys' of 'dict' objects}
+      904    0.210    0.000    0.214    0.000 {method 'integrated_call' of 'grpc._cython.cygrpc.Channel' objects}
+      700    0.032    0.000    0.176    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\prepare.py:433(search_requests_with_expr)
+      700    0.006    0.000    0.132    0.000 <__array_function__ internals>:2(clip)
+      700    0.004    0.000    0.122    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\numpy\core\fromnumeric.py:2046(clip)
+      700    0.003    0.000    0.118    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\numpy\core\fromnumeric.py:51(_wrapfunc)
+      700    0.003    0.000    0.114    0.000 {method 'clip' of 'numpy.ndarray' objects}
+      700    0.007    0.000    0.111    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\numpy\core\_methods.py:125(_clip)
+      700    0.021    0.000    0.098    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\prepare.py:335(_prepare_placeholders)
+39951/2807    0.037    0.000    0.085    0.000 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\copy.py:128(deepcopy)
+     1400    0.053    0.000    0.078    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\sklearn\preprocessing\_data.py:84(_handle_zeros_in_scale)
+      904    0.018    0.000    0.077    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\grpc\_channel.py:897(_prepare)
+      700    0.062    0.000    0.075    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\blob.py:32(vectorFloatToBytes)
+      904    0.074    0.000    0.074    0.000 {built-in method _thread.start_new_thread}
+7710/2810    0.019    0.000    0.070    0.000 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\copy.py:226(_deepcopy_dict)
+      700    0.068    0.000    0.068    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\numpy\core\_methods.py:106(_clip_dep_invoke_with_casting)
+     2800    0.024    0.000    0.057    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\sklearn\utils\validation.py:253(_num_samples)
+      700    0.005    0.000    0.047    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\abstract.py:461(__init__)
+   140000    0.044    0.000    0.044    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\wannadb\data\data.py:255(nuggets)
+      700    0.003    0.000    0.044    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\orm\schema.py:159(to_dict)
+      700    0.003    0.000    0.044    0.000 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\copy.py:200(_deepcopy_list)
+      904    0.017    0.000    0.042    0.000 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\threading.py:777(__init__)
+      700    0.033    0.000    0.040    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\abstract.py:473(_pack)
+      700    0.003    0.000    0.040    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\orm\schema.py:163(<listcomp>)
+     2103    0.009    0.000    0.037    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\orm\schema.py:229(to_dict)
+     1400    0.020    0.000    0.032    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\numpy\core\_methods.py:91(_clip_dep_is_scalar_nan)
+     2100    0.030    0.000    0.030    0.000 {built-in method numpy.zeros}
+      904    0.012    0.000    0.027    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\grpc\_channel.py:95(__init__)
+      904    0.014    0.000    0.024    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\check.py:311(check_pass_param)
+     2800    0.006    0.000    0.023    0.000 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\warnings.py:165(simplefilter)
+     2100    0.005    0.000    0.021    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\abstract.py:17(__getitem__)
+     1808    0.013    0.000    0.021    0.000 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\threading.py:228(__init__)
+     1604    0.020    0.000    0.020    0.000 {method 'SerializeToString' of 'google.protobuf.pyext._message.CMessage' objects}
+      700    0.011    0.000    0.020    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\prepare.py:492(<listcomp>)
+      904    0.004    0.000    0.020    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\grpc\_channel.py:829(_start_unary_request)
+     1400    0.009    0.000    0.017    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\numpy\core\numeric.py:1858(isscalar)
+     1400    0.003    0.000    0.017    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\orm\search.py:240(__getitem__)
+     2800    0.009    0.000    0.017    0.000 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\warnings.py:181(_add_filter)
+    25200    0.016    0.000    0.016    0.000 {built-in method builtins.hasattr}
+      700    0.003    0.000    0.015    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\types.py:259(get_consistency_level)
+      904    0.001    0.000    0.015    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\grpc\_common.py:92(serialize)
+     2800    0.006    0.000    0.014    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\numpy\core\numerictypes.py:358(issubdtype)
+      904    0.001    0.000    0.014    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\grpc\_common.py:81(_transform)
+      700    0.002    0.000    0.014    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\orm\search.py:166(__getitem__)
+      700    0.009    0.000    0.013    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\sklearn\metrics\pairwise.py:39(_return_float_dtype)
+      700    0.013    0.000    0.013    0.000 {built-in method _struct.pack}
+     1400    0.002    0.000    0.012    0.000 <__array_function__ internals>:2(ndim)
+      702    0.003    0.000    0.012    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\google\protobuf\internal\enum_type_wrapper.py:95(values)
+    96871    0.012    0.000    0.012    0.000 {method 'get' of 'dict' objects}
+      904    0.003    0.000    0.012    0.000 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\threading.py:521(__init__)
+     2800    0.003    0.000    0.012    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\sklearn\_config.py:24(get_config)
+      200    0.007    0.000    0.011    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\prepare.py:211(get_loading_progress)
+     2800    0.010    0.000    0.011    0.000 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\warnings.py:458(__enter__)
+     7700    0.006    0.000    0.011    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\scipy\sparse\base.py:1205(isspmatrix)
+      700    0.008    0.000    0.011    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\wannadb\matching\distance.py:107(__init__)
+      700    0.004    0.000    0.010    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\ts_utils.py:73(construct_guarantee_ts)
+      904    0.009    0.000    0.010    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\grpc\_channel.py:1219(__new__)
+     8413    0.008    0.000    0.010    0.000 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\copy.py:242(_keep_alive)
+      702    0.009    0.000    0.009    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\google\protobuf\internal\enum_type_wrapper.py:102(<listcomp>)
+     4200    0.002    0.000    0.009    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\prepare.py:468(dump)
+     1400    0.006    0.000    0.008    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\numpy\core\fromnumeric.py:3127(ndim)
+     2715    0.008    0.000    0.008    0.000 {built-in method _thread.allocate_lock}
+     5600    0.004    0.000    0.008    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\numpy\core\numerictypes.py:284(issubclass_)
+      700    0.008    0.000    0.008    0.000 {method 'append' of 'google.protobuf.pyext._message.RepeatedCompositeContainer' objects}
+     2800    0.008    0.000    0.008    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\google\protobuf\internal\enum_type_wrapper.py:115(__getattr__)
+2810/2803    0.002    0.000    0.008    0.000 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\abc.py:100(__subclasscheck__)
+     1400    0.006    0.000    0.008    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\numpy\core\getlimits.py:382(__new__)
+      700    0.003    0.000    0.008    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\wannadb\data\data.py:284(__setitem__)
+      904    0.007    0.000    0.007    0.000 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\threading.py:82(RLock)
+     2800    0.007    0.000    0.007    0.000 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\warnings.py:437(__init__)
+      700    0.003    0.000    0.007    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\wannadb\matching\distance.py:243(<listcomp>)
+     1400    0.003    0.000    0.007    0.000 <__array_function__ internals>:2(may_share_memory)
+      700    0.007    0.000    0.007    0.000 {method 'extend' of 'google.protobuf.pyext._message.RepeatedCompositeContainer' objects}
+    59587    0.007    0.000    0.007    0.000 {built-in method builtins.id}
+     1400    0.003    0.000    0.006    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\abstract.py:522(get__item)
+      703    0.002    0.000    0.006    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\orm\collection.py:150(_get_connection)
+        1    0.000    0.000    0.006    0.006 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\orm\collection.py:54(__init__)
+     1400    0.004    0.000    0.006    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\wannadb\statistics.py:46(__getitem__)
+     2800    0.004    0.000    0.006    0.000 <frozen importlib._bootstrap>:398(parent)
+     2800    0.003    0.000    0.006    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\sklearn\_config.py:16(_get_threadlocal_config)
+      905    0.006    0.000    0.006    0.000 {built-in method now}
+2810/2803    0.006    0.000    0.006    0.000 {built-in method _abc._abc_subclasscheck}
+      700    0.004    0.000    0.006    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\abstract.py:259(get__item)
+      700    0.006    0.000    0.006    0.000 {built-in method ujson.dumps}
+      904    0.005    0.000    0.005    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\grpc\_channel.py:375(__init__)
+      700    0.004    0.000    0.005    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\check.py:175(is_legal_search_data)
+     3618    0.004    0.000    0.005    0.000 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\threading.py:259(__exit__)
+     3618    0.003    0.000    0.005    0.000 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\threading.py:256(__enter__)
+     4200    0.005    0.000    0.005    0.000 {built-in method numpy.asarray}
+     2800    0.005    0.000    0.005    0.000 {method 'remove' of 'list' objects}
+     1400    0.005    0.000    0.005    0.000 {method 'extend' of 'google.protobuf.pyext._message.RepeatedScalarContainer' objects}
+     4200    0.005    0.000    0.005    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\numpy\core\fromnumeric.py:70(<dictcomp>)
+      700    0.004    0.000    0.005    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\wannadb\data\data.py:166(__getitem__)
+     8403    0.005    0.000    0.005    0.000 {built-in method builtins.issubclass}
+      904    0.003    0.000    0.004    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\grpc\_channel.py:443(__del__)
+      904    0.004    0.000    0.004    0.000 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\_weakrefset.py:82(add)
+      700    0.001    0.000    0.004    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\orm\search.py:200(ids)
+     2800    0.003    0.000    0.004    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\sklearn\utils\validation.py:476(_ensure_no_complex_data)
+        1    0.000    0.000    0.004    0.004 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\orm\collection.py:302(num_entities)
+     1400    0.004    0.000    0.004    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\numpy\core\_methods.py:101(_clip_dep_is_byte_swapped)
+        1    0.000    0.000    0.004    0.004 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\grpc_handler.py:767(get_collection_stats)
+      703    0.003    0.000    0.004    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\orm\connections.py:372(_fetch_handler)
+      904    0.004    0.000    0.004    0.000 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\threading.py:750(_newname)
+      907    0.004    0.000    0.004    0.000 {method '_acquire_restore' of '_thread.RLock' objects}
+     1400    0.003    0.000    0.004    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\abstract.py:243(__init__)
+     2800    0.003    0.000    0.003    0.000 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\warnings.py:477(__exit__)
+     2100    0.003    0.000    0.003    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\wannadb\statistics.py:20(__init__)
+        1    0.000    0.000    0.003    0.003 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\grpc_handler.py:246(describe_collection)
+      700    0.003    0.000    0.003    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\abstract.py:308(ids)
+     7000    0.003    0.000    0.003    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\numpy\core\einsumfunc.py:989(_einsum_dispatcher)
+     5600    0.003    0.000    0.003    0.000 {method 'HasField' of 'google.protobuf.pyext._message.CMessage' objects}
+    13514    0.003    0.000    0.003    0.000 {method 'items' of 'dict' objects}
+     9801    0.003    0.000    0.003    0.000 {built-in method builtins.len}
+      700    0.002    0.000    0.003    0.000 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\logging\__init__.py:1412(debug)
+      700    0.002    0.000    0.003    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\abstract.py:252(__len__)
+        1    0.000    0.000    0.003    0.003 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\grpc_handler.py:230(has_collection)
+     1400    0.002    0.000    0.003    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\orm\search.py:271(on_result)
+     3503    0.002    0.000    0.002    0.000 {built-in method builtins.getattr}
+      904    0.002    0.000    0.002    0.000 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\threading.py:1185(_make_invoke_excepthook)
+      904    0.002    0.000    0.002    0.000 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\threading.py:1118(daemon)
+     2800    0.002    0.000    0.002    0.000 {method 'insert' of 'list' objects}
+     2801    0.002    0.000    0.002    0.000 {method 'copy' of 'dict' objects}
+    31538    0.002    0.000    0.002    0.000 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\copy.py:182(_deepcopy_atomic)
+     1811    0.002    0.000    0.002    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\grpc\_channel.py:724(_is_complete)
+      700    0.002    0.000    0.002    0.000 {method 'append' of 'google.protobuf.pyext._message.RepeatedScalarContainer' objects}
+      904    0.002    0.000    0.002    0.000 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\threading.py:1314(current_thread)
+      700    0.002    0.000    0.002    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\orm\search.py:197(on_result)
+     2800    0.002    0.000    0.002    0.000 {method 'rpartition' of 'str' objects}
+    10500    0.002    0.000    0.002    0.000 {method 'append' of 'list' objects}
+      904    0.001    0.000    0.002    0.000 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\threading.py:268(_acquire_restore)
+      904    0.001    0.000    0.002    0.000 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\threading.py:271(_is_owned)
+     8400    0.002    0.000    0.002    0.000 {built-in method _warnings._filters_mutated}
+     2100    0.002    0.000    0.002    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\abstract.py:11(__init__)
+      700    0.001    0.000    0.001    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\orm\search.py:93(id)
+     4200    0.001    0.000    0.001    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\numpy\core\fromnumeric.py:2118(_sum_dispatcher)
+     1106    0.001    0.000    0.001    0.000 {built-in method time.time}
+      701    0.001    0.000    0.001    0.000 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\logging\__init__.py:1677(isEnabledFor)
+      904    0.001    0.000    0.001    0.000 {built-in method __new__ of type object at 0x00007FF944895C60}
+     2714    0.001    0.000    0.001    0.000 {method '__enter__' of '_thread.RLock' objects}
+      700    0.001    0.000    0.001    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\abstract.py:216(__init__)
+      904    0.001    0.000    0.001    0.000 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\threading.py:1103(daemon)
+      700    0.001    0.000    0.001    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\check.py:167(is_legal_limit)
+      904    0.001    0.000    0.001    0.000 {grpc._cython.cygrpc.get_fork_epoch}
+      700    0.001    0.000    0.001    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\check.py:171(is_legal_anns_field)
+      904    0.001    0.000    0.001    0.000 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\threading.py:265(_release_save)
+      904    0.001    0.000    0.001    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\grpc\_channel.py:170(_event_handler)
+     2716    0.001    0.000    0.001    0.000 {method '__exit__' of '_thread.RLock' objects}
+     1400    0.001    0.000    0.001    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\orm\search.py:146(__init__)
+     2104    0.001    0.000    0.001    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\orm\schema.py:287(dtype)
+      907    0.001    0.000    0.001    0.000 {method '_release_save' of '_thread.RLock' objects}
+      700    0.001    0.000    0.001    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\prepare.py:439(<dictcomp>)
+      700    0.001    0.000    0.001    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\wannadb\data\data.py:245(name)
+     2712    0.001    0.000    0.001    0.000 {method '__exit__' of '_thread.lock' objects}
+      904    0.001    0.000    0.001    0.000 {method 'add' of 'set' objects}
+      700    0.001    0.000    0.001    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\numpy\core\fromnumeric.py:2042(_clip_dispatcher)
+     2800    0.001    0.000    0.001    0.000 {built-in method numpy.asanyarray}
+        1    0.000    0.000    0.001    0.001 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\wannadb\data\vector_database.py:112(__exit__)
+     2100    0.001    0.000    0.001    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\wannadb\data\data.py:161(signals)
+      700    0.001    0.000    0.001    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\orm\search.py:222(__init__)
+        1    0.000    0.000    0.001    0.001 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\orm\connections.py:193(disconnect)
+     1808    0.001    0.000    0.001    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\grpc\_channel.py:1296(<genexpr>)
+      700    0.001    0.000    0.001    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\orm\schema.py:141(auto_id)
+      204    0.001    0.000    0.001    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\check.py:98(is_legal_table_name)
+     1400    0.001    0.000    0.001    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\numpy\core\multiarray.py:1368(may_share_memory)
+        1    0.000    0.000    0.001    0.001 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\grpc_handler.py:119(close)
+      700    0.001    0.000    0.001    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\orm\search.py:87(__init__)
+        1    0.000    0.000    0.001    0.001 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\grpc\_channel.py:1567(close)
+        1    0.000    0.000    0.001    0.001 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\grpc\_channel.py:1548(_close)
+     1811    0.001    0.000    0.001    0.000 {method 'append' of 'collections.deque' objects}
+        2    0.001    0.000    0.001    0.000 {method 'close' of 'grpc._cython.cygrpc.Channel' objects}
+      904    0.001    0.000    0.001    0.000 {built-in method _thread.get_ident}
+      904    0.001    0.000    0.001    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\grpc\_compression.py:42(augment_metadata)
+      700    0.001    0.000    0.001    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\check.py:253(is_legal_round_decimal)
+      700    0.001    0.000    0.001    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\wannadb\statistics.py:54(__setitem__)
+      200    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\grpc_handler.py:682(can_loop)
+      900    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\check.py:203(is_legal_partition_name_array)
+     1808    0.000    0.000    0.000    0.000 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\threading.py:529(is_set)
+     2103    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\orm\schema.py:268(params)
+      904    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\grpc\_channel.py:84(_deadline)
+     1400    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\numpy\core\fromnumeric.py:3123(_ndim_dispatcher)
+      700    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\check.py:257(is_legal_travel_timestamp)
+      908    0.000    0.000    0.000    0.000 {method '_is_owned' of '_thread.RLock' objects}
+      701    0.000    0.000    0.000    0.000 {method 'pop' of 'dict' objects}
+     1400    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\abstract.py:470(__len__)
+      904    0.000    0.000    0.000    0.000 {method '__enter__' of '_thread.lock' objects}
+      700    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\check.py:261(is_legal_guarantee_timestamp)
+        1    0.000    0.000    0.000    0.000 {built-in method builtins.print}
+      700    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\ts_utils.py:69(get_bounded_ts)
+      904    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\grpc\_channel.py:1223(with_wait_for_ready)
+      700    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\abstract.py:229(id)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\orm\schema.py:97(construct_from_dict)
+      700    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\wannadb\statistics.py:58(__iadd__)
+      700    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\check.py:189(is_legal_output_fields)
+      904    0.000    0.000    0.000    0.000 {method 'release' of '_thread.lock' objects}
+        6    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\orm\schema.py:220(construct_from_dict)
+        6    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\orm\schema.py:169(__init__)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\orm\schema.py:99(<listcomp>)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\orm\schema.py:34(__init__)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\abstract.py:117(__init__)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\orm\schema.py:37(<listcomp>)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\abstract.py:136(__pack)
+        3    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\orm\schema.py:201(__deepcopy__)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\abstract.py:155(<listcomp>)
+        3    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\abstract.py:58(__init__)
+        3    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\abstract.py:74(__pack)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\types.py:235(cmp_consistency_level)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\prepare.py:546(load_collection)
+        2    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\prepare.py:150(describe_collection_request)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\prepare.py:566(get_collection_stats_request)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\orm\collection.py:328(<dictcomp>)
+        2    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\grpc\_channel.py:1542(_unsubscribe_all)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\abstract.py:162(dict)
+        6    0.000    0.000    0.000    0.000 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\enum.py:289(__call__)
+        6    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\orm\schema.py:206(_parse_type_params)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\grpc\_channel.py:1245(__del__)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\logging\__init__.py:214(_acquireLock)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\abstract.py:169(<listcomp>)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\threading.py:374(notify_all)
+        7    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\wannadb\data\data.py:338(documents)
+        3    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\pymilvus\client\abstract.py:103(dict)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\venv\lib\site-packages\grpc\_channel.py:1570(__del__)
+        6    0.000    0.000    0.000    0.000 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\enum.py:580(__new__)
+        4    0.000    0.000    0.000    0.000 {method 'remove' of 'collections.deque' objects}
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\logging\__init__.py:1424(info)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\threading.py:351(notify)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\logging\__init__.py:1663(getEffectiveLevel)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\wannadb\data\data.py:343(attributes)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\.pyenv\pyenv-win\versions\3.9.0\lib\logging\__init__.py:223(_releaseLock)
+        6    0.000    0.000    0.000    0.000 {method 'update' of 'dict' objects}
+        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
+        1    0.000    0.000    0.000    0.000 {method 'acquire' of '_thread.RLock' objects}
+        3    0.000    0.000    0.000    0.000 {method 'extend' of 'list' objects}
+        1    0.000    0.000    0.000    0.000 {grpc._cython.cygrpc.fork_unregister_channel}
+        1    0.000    0.000    0.000    0.000 {method 'release' of '_thread.RLock' objects}
+
+

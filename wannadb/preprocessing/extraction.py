@@ -98,6 +98,7 @@ class SpacyNERExtractor(BaseExtractor):
 
                 statistics["num_nuggets"] += 1
                 statistics["spacy_entity_type_dist"][entity.label_] += 1
+        print(f"{self.identifier} - done")
 
     def to_config(self) -> Dict[str, Any]:
         return {
@@ -172,6 +173,7 @@ class StanzaNERExtractor(BaseExtractor):
                     statistics["stanza_entity_type_dist"][entity.type] += 1
 
             document[SentenceStartCharsSignal] = SentenceStartCharsSignal(sentence_start_chars)
+        print(f"{self.identifier} - done")
 
     def to_config(self) -> Dict[str, Any]:
         return {
