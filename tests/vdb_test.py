@@ -157,17 +157,8 @@ def test_vector_search(document_base):
 
         vb.extract_nuggets(document_base)
 
-        for i in document_base.documents:
-
-            #Check if document-nugget collection was created
-            assert re.sub('[^a-zA-Z0-9 \n\.]', '_', i.name) in utility.list_collections()
-
-            #Check if document-nugget collection has the correct number of entities
-            collection = Collection(re.sub('[^a-zA-Z0-9 \n\.]', '_', i.name))
-            assert collection.num_entities == 2
-
         #Check if correct nugget data was saved in db
-        collection = Collection("document_0")
+        collection = Collection("Embeddings")
         collection.load()
 
         vectors_right =[create_random_float_vector_dimension_1024()]

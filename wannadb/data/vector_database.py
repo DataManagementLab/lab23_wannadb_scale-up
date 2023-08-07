@@ -65,11 +65,6 @@ index_params = {
   "params":{"nlist":1024}
 }
 
-# distance params
-distance_params = {
-    "metric": "IP", 
-    "dim": 1024
-}
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -128,7 +123,7 @@ class vectordb:
                     name="Embeddings",
                     schema=embbeding_schema,
                     using="default",
-                    shards_num=2,
+                    shards_num=16,
                 )
              logger.info("Created collection Embeddings")
 
@@ -152,10 +147,14 @@ class vectordb:
             field_name='embedding_value', 
             index_params=index_params
             )
+        collection.create_index(
+            field_name="id", 
+            index_name="scalar_index",
+            )           
         logger.info("Indexing finished")
         logger.info("Extraction finished")
     
-
+"""
 def compute_distances(
             xs,
             ys
@@ -250,7 +249,7 @@ with ResourceManager() as resource_manager:
                              attributes=[Attribute(attribute) for attribute in dataset.ATTRIBUTES])
 
     # preprocess the data
-    preprocessing_phase = Pipeline([
+    default_pipeline = Pipeline([
                         StanzaNERExtractor(),
                         SpacyNERExtractor("SpacyEnCoreWebLg"),
                         ContextSentenceCacher(),
@@ -259,20 +258,25 @@ with ResourceManager() as resource_manager:
                         SplitAttributeNameLabelParaphraser(do_lowercase=True, splitters=[" ", "_"]),
                         SBERTLabelEmbedder("SBERTBertLargeNliMeanTokensResource"),
                         SBERTTextEmbedder("SBERTBertLargeNliMeanTokensResource"),
-                        BERTContextSentenceEmbedder("BertLargeCasedResource"),
-                        RelativePositionEmbedder()
         ])
+    #BERTContextSentenceEmbedder("BertLargeCasedResource"),
 
-    preprocessing_phase(
-            document_base,
-            EmptyInteractionCallback(),
-            EmptyStatusCallback(),
-            Statistics(do_collect=False)
-        )
+    statistics = Statistics(do_collect=True)
+    statistics["preprocessing"]["config"] = default_pipeline.to_config()
+
+    default_pipeline(
+             document_base=document_base,
+             interaction_callback=EmptyInteractionCallback(),
+             status_callback=EmptyStatusCallback(),
+             statistics=statistics["preprocessing"]
+         )
    
-    print(f"Document base has {len(document_base.documents)} documents, {document_base.nuggets} nuggets and {len(document_base.attributes)} attributes.")
     print(f"Document base has {len([nugget for nugget in document_base.nuggets if 'LabelEmbeddingSignal' in nugget.signals.keys()])} nugget LabelEmbeddings.")
+    print(f"Document base has { len([nugget for nugget in document_base.nuggets if 'TextEmbeddingSignal' in nugget.signals.keys()])} nugget TextEmbeddings.")
+    print(f"Document base has { len([nugget for nugget in document_base.nuggets if 'ContextSentenceEmbeddingSignal' in nugget.signals.keys()])} nugget ContextSentenceEmbeddings.")
     print(f"Document base has { len([attribute for attribute in document_base.attributes if 'LabelEmbeddingSignal' in attribute.signals.keys()])} attribute LabelEmbeddings.")
+    print(f"Document base has { len([attribute for attribute in document_base.attributes if 'TextEmbeddingSignal' in attribute.signals.keys()])} attribute TextEmbeddings.")
+    print(f"Document base has { len([attribute for attribute in document_base.attributes if 'ContextSentenceEmbeddingSignal' in attribute.signals.keys()])} attribute ContextSentenceEmbeddings.")
 
     search_params = {"metric_type": "L2", "params": {"nprobe": 10}, "offset": 0}
     embeddding_signals = ['LabelEmbeddingSignal', 'TextEmbeddingSignal', 'ContextSentenceEmbeddingSignal']
@@ -288,9 +292,10 @@ with ResourceManager() as resource_manager:
         start_time = time.time()
         embedding_collection = Collection("Embeddings")
         embedding_collection.load()
+        print(f"Embedding collection has {embedding_collection.num_entities} embeddings.")
         #dist_collection = Collection("Distances")
         #dist_collection.load()
-
+        amount_distances = 0
         distances={}
         #for every attribute in the document base
         for attribute in document_base.attributes:
@@ -306,12 +311,18 @@ with ResourceManager() as resource_manager:
                     data = attribute_embeddings,
                     anns_field="embedding_value",
                     param=search_params,
-                    limit=10,
+                    limit=16384,
                     expr = f"embedding_type == '{i}'"
-                )       
+                )
+                print(f"Attribute: {attribute.name}; Type of embedding: {i}; Amount distance values: {len(results[0].distances)}")
+                amount_distances= amount_distances + len(results[0].distances)     
                 distances[attribute.name][i]= dict(zip(results[0].ids, results[0].distances))
-    print(distances)
-    print("VDB:--- %s seconds ---" % (time.time() - start_time))
-    compute_distances(document_base.nuggets, document_base.attributes)
 
+    print("VDB:--- %s seconds ---" % (time.time() - start_time))
+    distance_mat = compute_distances(document_base.nuggets, document_base.attributes)
+    print(f"Processed distances VDB: {amount_distances}")
+    print(f"Processed distances without VDB: {distance_mat.size}")
+
+    #effizient einen pro Dokument nur nächsten Suchen
+"""
 

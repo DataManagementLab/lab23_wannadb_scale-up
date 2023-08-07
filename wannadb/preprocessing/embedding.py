@@ -181,6 +181,7 @@ class SBERTLabelEmbedder(BaseSBERTEmbedder):
 
         for nugget, embedding in zip(nuggets, embeddings):
             nugget[LabelEmbeddingSignal] = LabelEmbeddingSignal(embedding)
+        print(f"{self.identifier} -done")
 
     def _embed_attributes(
             self,
@@ -229,6 +230,7 @@ class SBERTTextEmbedder(BaseSBERTEmbedder):
 
         for nugget, embedding in zip(nuggets, embeddings):
             nugget[TextEmbeddingSignal] = TextEmbeddingSignal(embedding)
+        print(f"{self.identifier} -done")
 
 
 @register_configurable_element
@@ -482,6 +484,7 @@ class BERTContextSentenceEmbedder(BaseEmbedder):
                 # compute the embedding as the mean of the nugget's tokens' embeddings
                 embedding: np.ndarray = np.mean(output[token_indices], axis=0)
             nugget[ContextSentenceEmbeddingSignal] = ContextSentenceEmbeddingSignal(embedding)
+        print(f"{self.identifier} - done")
 
     def to_config(self) -> Dict[str, Any]:
         return {
