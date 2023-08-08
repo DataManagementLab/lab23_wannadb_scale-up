@@ -82,21 +82,20 @@ with vectordb() as vb:
         embedding_collection.load()
         print(f"Embedding collection has {embedding_collection.num_entities} embeddings.")
         
-
         amount_distances = 0
         #for every attribute in the document base
         for attribute in document_base.attributes:
             #time_per_attribute = time.time()
+            
+            statistics = Statistics(do_collect=True)
+            distances: np.ndarray = SignalsMeanDistance( signal_identifiers=["LabelEmbeddingSignal"]).compute_distances([attribute], document_base.nuggets, statistics["distance"])[0]
+            for nugget, distance in zip(document_base.nuggets, distances):
+                nugget[CachedDistanceSignal] = CachedDistanceSignal(distance)
+
             for i in document_base.documents:
 
                 #Get the embeddings for the attribute
                 attribute_embeddings= [attribute.signals['LabelEmbeddingSignal'].value]
-
-                statistics = Statistics(do_collect=True)
-                distances: np.ndarray = SignalsMeanDistance( signal_identifiers=["LabelEmbeddingSignal"]).compute_distances([attribute], document_base.nuggets, statistics["distance"])[0]
-                for nugget, distance in zip(document_base.nuggets, distances):
-                    nugget[CachedDistanceSignal] = CachedDistanceSignal(distance)
-
 
                 #Compute the distance between the embeddings of the attribute and the embeddings of the nuggets
                 search_param= {
