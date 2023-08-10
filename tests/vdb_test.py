@@ -5,7 +5,7 @@ import pytest
 from wannadb.data.data import Attribute, Document, DocumentBase, InformationNugget
 from wannadb.data.data import Document, DocumentBase
 import random
-from wannadb.data.vector_database import vectordb, VECTORDB
+from wannadb.data.vector_database import compute_embedding_distances, generate_and_store_embedding, vectordb, VECTORDB
 from pymilvus import Collection, utility
 import re
 
@@ -173,3 +173,8 @@ def test_vector_search(document_base):
             )
         assert results[0].ids 
         assert results[0].distances
+
+    
+def test_conoa_bson():
+    generate_and_store_embedding("D:\\UNI\\wannaDB\\datasets\\corona\\raw-documents")
+    compute_embedding_distances()
