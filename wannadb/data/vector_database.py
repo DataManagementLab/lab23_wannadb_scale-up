@@ -1,3 +1,8 @@
+import cProfile
+import io
+import os
+from pstats import SortKey
+import pstats
 from pymilvus import (
     connections,
     utility,
@@ -81,7 +86,7 @@ class vectordb:
 
         if VECTORDB is not None:
             logger.error("Vector database already initialized")
-            assert False, "There can only be one vector database"
+            return VECTORDB
         else:
             VECTORDB = self
 
@@ -92,10 +97,6 @@ class vectordb:
                 "TextEmbeddingSignal",
                 "ContextSentenceEmbeddingSignal",
             ]
-
-        with self:
-            for i in utility.list_collections():
-                utility.drop_collection(i)
 
         logger.info("Vector database initialized")
         
@@ -154,7 +155,7 @@ class vectordb:
         logger.info("Indexing finished")
         logger.info("Extraction finished")
     
-"""
+
 def compute_distances(
             xs,
             ys
@@ -205,6 +206,7 @@ def compute_distances(
 
         # compute distances signal by signal
         start_time = time.time()
+        amount_distances=0
         distances: np.ndarray = np.zeros((len(xs), len(ys)))
         for idx in range(3):
             if xs_is_present[idx] == 1 and ys_is_present[idx] == 1:
@@ -212,6 +214,7 @@ def compute_distances(
                 y_embeddings: np.ndarray = np.array([y[signal_identifiers[idx]] for y in ys])
                 tmp: np.ndarray = cosine_distances(x_embeddings, y_embeddings)
                 distances = np.add(distances, tmp)
+                amount_distances += len(tmp)
 
         if xs_is_present[3] == 1 and ys_is_present[3] == 1:
             x_positions: np.ndarray = np.array([x[signal_identifiers[3]] for x in xs])
@@ -221,6 +224,7 @@ def compute_distances(
                 for y_ix, y_value in enumerate(y_positions):
                     tmp[x_ix, y_ix] = np.abs(x_value - y_value)
             distances = np.add(distances, tmp)
+            amount_distances += len(tmp)
 
         if xs_is_present[4] == 1 and ys_is_present[4] == 1:
             x_values: list[list[str]] = [x[signal_identifiers[4]] for x in xs]
@@ -231,7 +235,9 @@ def compute_distances(
                     if x_value == y_value:
                         tmp[x_ix, y_ix] = 0
             distances = np.add(distances, tmp)
+            amount_distances += len(tmp)
 
+        print(f"Processed distances without VDB: {amount_distances}")
         actually_present: np.ndarray = xs_is_present * ys_is_present
         if np.sum(actually_present) == 0:
             print("Without VDB--- %s seconds ---" % (time.time() - start_time))
@@ -241,88 +247,117 @@ def compute_distances(
             return np.divide(distances, np.sum(actually_present))
 
 
-import datasets.corona.corona as dataset
+def generate_and_store_embedding(input_path):
+    
+    with ResourceManager() as resource_manager:
+        documents = []
+        for filename in os.listdir(input_path):
+            with open(os.path.join(input_path, filename), "r", encoding='utf-8') as infile:
+                text = infile.read()
+                documents.append(Document(filename.split(".")[0], text))
 
-with ResourceManager() as resource_manager:
-    documents = dataset.load_dataset()
-    document_base = DocumentBase(documents=[Document(doc['id'], doc['text']) for doc in documents], 
-                             attributes=[Attribute(attribute) for attribute in dataset.ATTRIBUTES])
+        logger.info(f"Loaded {len(documents)} documents")
+        document_base = DocumentBase(documents, [Attribute("deaths"),Attribute("date")])
+        
+        # preprocess the data
+        default_pipeline = Pipeline([
+                            StanzaNERExtractor(),
+                            SpacyNERExtractor("SpacyEnCoreWebLg"),
+                            ContextSentenceCacher(),
+                            CopyNormalizer(),
+                            OntoNotesLabelParaphraser(),
+                            SplitAttributeNameLabelParaphraser(do_lowercase=True, splitters=[" ", "_"]),
+                            SBERTLabelEmbedder("SBERTBertLargeNliMeanTokensResource"),
+                            SBERTTextEmbedder("SBERTBertLargeNliMeanTokensResource"),
+            ])
+        #BERTContextSentenceEmbedder("BertLargeCasedResource"),
 
-    # preprocess the data
-    default_pipeline = Pipeline([
-                        StanzaNERExtractor(),
-                        SpacyNERExtractor("SpacyEnCoreWebLg"),
-                        ContextSentenceCacher(),
-                        CopyNormalizer(),
-                        OntoNotesLabelParaphraser(),
-                        SplitAttributeNameLabelParaphraser(do_lowercase=True, splitters=[" ", "_"]),
-                        SBERTLabelEmbedder("SBERTBertLargeNliMeanTokensResource"),
-                        SBERTTextEmbedder("SBERTBertLargeNliMeanTokensResource"),
-        ])
-    #BERTContextSentenceEmbedder("BertLargeCasedResource"),
+        statistics = Statistics(do_collect=True)
+        statistics["preprocessing"]["config"] = default_pipeline.to_config()
 
-    statistics = Statistics(do_collect=True)
-    statistics["preprocessing"]["config"] = default_pipeline.to_config()
+        default_pipeline(
+                document_base=document_base,
+                interaction_callback=EmptyInteractionCallback(),
+                status_callback=EmptyStatusCallback(),
+                statistics=statistics["preprocessing"]
+            )
+    
+        print(f"Document base has {len([nugget for nugget in document_base.nuggets if 'LabelEmbeddingSignal' in nugget.signals.keys()])} nugget LabelEmbeddings.")
+        print(f"Document base has { len([nugget for nugget in document_base.nuggets if 'TextEmbeddingSignal' in nugget.signals.keys()])} nugget TextEmbeddings.")
+        print(f"Document base has { len([nugget for nugget in document_base.nuggets if 'ContextSentenceEmbeddingSignal' in nugget.signals.keys()])} nugget ContextSentenceEmbeddings.")
+        print(f"Document base has { len([attribute for attribute in document_base.attributes if 'LabelEmbeddingSignal' in attribute.signals.keys()])} attribute LabelEmbeddings.")
+        print(f"Document base has { len([attribute for attribute in document_base.attributes if 'TextEmbeddingSignal' in attribute.signals.keys()])} attribute TextEmbeddings.")
+        print(f"Document base has { len([attribute for attribute in document_base.attributes if 'ContextSentenceEmbeddingSignal' in attribute.signals.keys()])} attribute ContextSentenceEmbeddings.")
+        
+        with vectordb() as vb:
+            for i in utility.list_collections():
+                    utility.drop_collection(i)
 
-    default_pipeline(
-             document_base=document_base,
-             interaction_callback=EmptyInteractionCallback(),
-             status_callback=EmptyStatusCallback(),
-             statistics=statistics["preprocessing"]
-         )
-   
-    print(f"Document base has {len([nugget for nugget in document_base.nuggets if 'LabelEmbeddingSignal' in nugget.signals.keys()])} nugget LabelEmbeddings.")
-    print(f"Document base has { len([nugget for nugget in document_base.nuggets if 'TextEmbeddingSignal' in nugget.signals.keys()])} nugget TextEmbeddings.")
-    print(f"Document base has { len([nugget for nugget in document_base.nuggets if 'ContextSentenceEmbeddingSignal' in nugget.signals.keys()])} nugget ContextSentenceEmbeddings.")
-    print(f"Document base has { len([attribute for attribute in document_base.attributes if 'LabelEmbeddingSignal' in attribute.signals.keys()])} attribute LabelEmbeddings.")
-    print(f"Document base has { len([attribute for attribute in document_base.attributes if 'TextEmbeddingSignal' in attribute.signals.keys()])} attribute TextEmbeddings.")
-    print(f"Document base has { len([attribute for attribute in document_base.attributes if 'ContextSentenceEmbeddingSignal' in attribute.signals.keys()])} attribute ContextSentenceEmbeddings.")
+            vb.extract_nuggets(document_base)
+            
+        with open("corona.bson", "wb") as file:
+            file.write(document_base.to_bson())
 
+        
+
+def compute_embedding_distances(path = "corona.bson"):    
+    
     search_params = {"metric_type": "L2", "params": {"nprobe": 10}, "offset": 0}
     embeddding_signals = ['LabelEmbeddingSignal', 'TextEmbeddingSignal', 'ContextSentenceEmbeddingSignal']
-        
+    pr = cProfile.Profile()
     
+    with open(path, "rb") as file:
+        document_base = DocumentBase.from_bson(file.read())
 
-    with vectordb() as vb:
-        for i in utility.list_collections():
-                utility.drop_collection(i)
+        if not document_base.validate_consistency():
+            logger.error("Document base is inconsistent!")
+            return
+                
+        with vectordb() as vb:
+            pr.enable()
+            start_time = time.time()
+            embedding_collection = Collection("Embeddings")
+            embedding_collection.load()
+            print("Load Collection:--- %s seconds ---" % (time.time() - start_time))
+            print(f"Embedding collection has {embedding_collection.num_entities} embeddings.")
+            #dist_collection = Collection("Distances")
+            #dist_collection.load()
+            amount_distances = 0
+            distances={}
+            #for every attribute in the document base
+            start_time = time.time()
+            for attribute in document_base.attributes:
+                distances[attribute.name]={}
+                #for every embedding signal in the attribute
+                for i in [signal.identifier for signal in attribute.signals.values() if signal.identifier in embeddding_signals]:
 
-        vb.extract_nuggets(document_base)
+                    #Get the embeddings for the attribute
+                    attribute_embeddings= [attribute.signals[i].value]
 
-        start_time = time.time()
-        embedding_collection = Collection("Embeddings")
-        embedding_collection.load()
-        print(f"Embedding collection has {embedding_collection.num_entities} embeddings.")
-        #dist_collection = Collection("Distances")
-        #dist_collection.load()
-        amount_distances = 0
-        distances={}
-        #for every attribute in the document base
-        for attribute in document_base.attributes:
-            distances[attribute.name]={}
-            #for every embedding signal in the attribute
-            for i in [signal.identifier for signal in attribute.signals.values() if signal.identifier in embeddding_signals]:
+                    #Compute the distance between the embeddings of the attribute and the embeddings of the nuggets
+                    results = embedding_collection.search(
+                        data = attribute_embeddings,
+                        anns_field="embedding_value",
+                        param=search_params,
+                        limit=16384,
+                        expr = f"embedding_type == '{i}'"
+                    )
+                    print(f"Attribute: {attribute.name}; Type of embedding: {i}; Amount distance values: {len(results[0].distances)}")
+                    amount_distances += len(results[0].distances)     
+                    distances[attribute.name][i]= dict(zip(results[0].ids, results[0].distances))
 
-                #Get the embeddings for the attribute
-                attribute_embeddings= [attribute.signals[i].value]
-
-                #Compute the distance between the embeddings of the attribute and the embeddings of the nuggets
-                results = embedding_collection.search(
-                    data = attribute_embeddings,
-                    anns_field="embedding_value",
-                    param=search_params,
-                    limit=16384,
-                    expr = f"embedding_type == '{i}'"
-                )
-                print(f"Attribute: {attribute.name}; Type of embedding: {i}; Amount distance values: {len(results[0].distances)}")
-                amount_distances= amount_distances + len(results[0].distances)     
-                distances[attribute.name][i]= dict(zip(results[0].ids, results[0].distances))
-
+    pr.disable()
+    s = io.StringIO()
+    sortby = SortKey.CUMULATIVE
+    ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+    ps.print_stats()
+    print(s.getvalue())
+    with open('vdb_current_match.txt', 'w+') as f:
+        f.write(s.getvalue())
+        
     print("VDB:--- %s seconds ---" % (time.time() - start_time))
     distance_mat = compute_distances(document_base.nuggets, document_base.attributes)
     print(f"Processed distances VDB: {amount_distances}")
     print(f"Processed distances without VDB: {distance_mat.size}")
 
-    #effizient einen pro Dokument nur nächsten Suchen
-"""
 
