@@ -4,5 +4,6 @@
 /.pytest_cache/
 /volumes/
 /datasets/
-
 /models/
+__pycache__
+__pycache__/
