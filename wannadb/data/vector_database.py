@@ -86,7 +86,7 @@ class vectordb:
 
         if VECTORDB is not None:
             logger.error("Vector database already initialized")
-            return VECTORDB
+            assert False, "There can only be one vector database"
         else:
             VECTORDB = self
 
@@ -111,8 +111,10 @@ class vectordb:
         
 
     def __exit__(self, *args) -> None:
+        global VECTORDB
         logger.info("Disconnecting from vector database")
         connections.disconnect(alias='default')
+        VECTORDB = None
 
 
     def extract_nuggets(self, documentBase: DocumentBase) -> None:
@@ -124,7 +126,7 @@ class vectordb:
                     name="Embeddings",
                     schema=embbeding_schema,
                     using="default",
-                    shards_num=16,
+                    shards_num=1,
                 )
              logger.info("Created collection Embeddings")
 
@@ -350,7 +352,7 @@ def compute_embedding_distances(path = "corona.bson"):
     s = io.StringIO()
     sortby = SortKey.CUMULATIVE
     ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-    ps.print_stats()
+    #ps.print_stats()
     print(s.getvalue())
     with open('vdb_current_match.txt', 'w+') as f:
         f.write(s.getvalue())
