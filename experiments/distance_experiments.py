@@ -107,7 +107,7 @@ def new_compute_embedding_distances(path = "corona.bson"):
                     search_param= {
                         'data' : attribute_embeddings,
                         'anns_field' : "embedding_value",
-                        'param' : {"metric_type": "L2", "params": {"nprobe": 10}, "offset": 0},
+                        'param' : {"metric_type": "L2", "params": {"nprobe": 1000}, "offset": 0},
                         'limit' : 1,
                         'expr' : f"embedding_type == 'LabelEmbeddingSignal' and id like \"{i.name}%\""
                     }
@@ -122,7 +122,7 @@ def new_compute_embedding_distances(path = "corona.bson"):
     sortby = SortKey.CUMULATIVE
     ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
     ps.print_stats()
-    #print(s.getvalue())
+    print(s.getvalue())
     with open('vdb_current_match.txt', 'w+') as f:
         f.write(s.getvalue())
     

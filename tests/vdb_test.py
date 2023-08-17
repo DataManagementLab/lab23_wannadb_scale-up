@@ -6,9 +6,11 @@ from experiments.distance_experiments import new_compute_embedding_distances
 from wannadb.data.data import Attribute, Document, DocumentBase, InformationNugget
 from wannadb.data.data import Document, DocumentBase
 import random
-from wannadb.data.vector_database import compute_embedding_distances, generate_and_store_embedding, vectordb, VECTORDB
+from wannadb.data.vector_database import compute_embedding_distances, compute_embedding_distances_withoutVDB, generate_and_store_embedding, vectordb, VECTORDB
 from pymilvus import Collection, utility
 import re
+
+import xlsxwriter
 
 @pytest.fixture
 def documents() -> List[Document]:
@@ -175,10 +177,57 @@ def test_vector_search(document_base):
         assert results[0].ids 
         assert results[0].distances
 
+
+def test_corona():
+    result_dict = compute_embedding_distances()
     
 def test_conoa_bson():
     
     #generate_and_store_embedding("D:\\UNI\\wannaDB\\datasets\\corona\\raw-documents")
-    compute_embedding_distances()
-    print("new:")
-    new_compute_embedding_distances()
+    result_dict = compute_embedding_distances()
+    time_without, distances_without = compute_embedding_distances_withoutVDB()
+    
+    workbook = xlsxwriter.Workbook("MyExcel.xlsx")
+    times_worksheet = workbook.add_worksheet("times")
+    distances_worksheet = workbook.add_worksheet("distances")
+    
+    startrow = 1
+    column = 1
+    limit_arr = []
+    
+    for nprobe, probe_dict in result_dict.items():
+        row = startrow
+        
+        times_worksheet.write(row, column, f"N_Probe = {nprobe}")
+        distances_worksheet.write(row, column, f"N_Probe = {nprobe}")
+        row +=1
+        for limit, limit_dict in probe_dict.items():
+            if not limit in limit_arr:
+                limit_arr.append(limit)
+            
+            times_worksheet.write(row, column, limit_dict["time"])
+            distances_worksheet.write(row, column, limit_dict["amount_distances"])
+            row +=1
+        
+        column += 1
+    
+    column += 1
+    
+    row = startrow
+    times_worksheet.write(row, column, "Without VDB")
+    distances_worksheet.write(row, column, "Without VDB")
+    row += 1
+    times_worksheet.write(row, column, time_without)
+    distances_worksheet.write(row, column, distances_without)
+    
+    row = startrow + 1
+    column = 1    
+    for limit in limit_arr:
+        times_worksheet.write(row, column-1, f"Limit = {limit}")
+        distances_worksheet.write(row, column-1, f"Limit = {limit}")
+        row +=1
+            
+    workbook.close()
+    
+    #print("new:")
+    #new_compute_embedding_distances()
