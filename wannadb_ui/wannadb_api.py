@@ -12,9 +12,9 @@ from wannadb.configuration import Pipeline
 from wannadb.data.data import Attribute, Document, DocumentBase
 from wannadb.interaction import EmptyInteractionCallback, InteractionCallback
 from wannadb.matching.distance import SignalsMeanDistance
-from wannadb.matching.matching import RankingBasedMatcher
+from wannadb.matching.matching import RankingBasedMatcher, RankingBasedMatcherVDB
 from wannadb.preprocessing.embedding import BERTContextSentenceEmbedder, RelativePositionEmbedder, \
-    SBERTTextEmbedder, SBERTLabelEmbedder
+    SBERTTextEmbedder, SBERTLabelEmbedder, SBERTExamplesEmbedder
 from wannadb.preprocessing.extraction import StanzaNERExtractor, SpacyNERExtractor
 from wannadb.preprocessing.label_paraphrasing import OntoNotesLabelParaphraser, \
     SplitAttributeNameLabelParaphraser
@@ -24,6 +24,8 @@ from wannadb.statistics import Statistics
 from wannadb.status import StatusCallback
 from wannadb_parsql.cache_db import SQLiteCacheDB
 from wannadb_ui.common import INPUT_DOCS_COLUMN_NAME
+from wannadb.data.vector_database import vectordb
+from wannadb.data.signals import UserProvidedExamplesSignal
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +76,7 @@ class WannaDBAPI(QObject):
                 logger.error("The path cannot be empty!")
                 self.error.emit("The path cannot be empty!")
                 return
+            print(path)
 
             if pathlib.Path(path).is_dir():
                 path += "/*.txt"
@@ -99,7 +102,9 @@ class WannaDBAPI(QObject):
 
             attributes = []
             for attribute_name in attribute_names:
-                attributes.append(Attribute(attribute_name))
+                new_attribute = Attribute(attribute_name)
+                new_attribute[UserProvidedExamplesSignal] = UserProvidedExamplesSignal(["amount of deaths"])
+                attributes.append(new_attribute)
                 self.cache_db.create_table_by_name(attribute_name)
 
             document_base = DocumentBase(documents, attributes)
@@ -120,10 +125,8 @@ class WannaDBAPI(QObject):
                 CopyNormalizer(),
                 OntoNotesLabelParaphraser(),
                 SplitAttributeNameLabelParaphraser(do_lowercase=True, splitters=[" ", "_"]),
-                SBERTLabelEmbedder("SBERTBertLargeNliMeanTokensResource"),
                 SBERTTextEmbedder("SBERTBertLargeNliMeanTokensResource"),
-                BERTContextSentenceEmbedder("BertLargeCasedResource"),
-                RelativePositionEmbedder()
+                SBERTExamplesEmbedder("SBERTBertLargeNliMeanTokensResource")
             ])
 
             # run preprocessing phase
@@ -137,6 +140,11 @@ class WannaDBAPI(QObject):
             self.document_base_to_ui.emit(document_base)
             self.statistics_to_ui.emit(statistics)
             self.finished.emit("Finished!")
+
+            ####Test VDB Extraction####
+            with vectordb() as vdb:
+                vdb.extract_nuggets(document_base)
+
         except FileNotFoundError:
             logger.error("Directory does not exist!")
             self.error.emit("Directory does not exist!")
@@ -160,6 +168,10 @@ class WannaDBAPI(QObject):
                 for attribute in document_base.attributes:
                     self.cache_db.create_table_by_name(attribute.name)
                 self.cache_db.create_input_docs_table(INPUT_DOCS_COLUMN_NAME, document_base.documents)
+
+                self.status.emit("Loading vector database!",-1)
+              #  with vectordb() as vdb:
+                #    vdb.extract_nuggets(document_base)
 
                 self.document_base_to_ui.emit(document_base)
                 self.finished.emit("Finished!")
@@ -358,21 +370,13 @@ class WannaDBAPI(QObject):
                             new_nuggets.append((document, start, start + len(nug_text)))
                             start += len(nug_text)
                 return new_nuggets
+            
 
             matching_phase = Pipeline(
                 [
                     SplitAttributeNameLabelParaphraser(do_lowercase=True, splitters=[" ", "_"]),
                     ContextSentenceCacher(),
-                    SBERTLabelEmbedder("SBERTBertLargeNliMeanTokensResource"),
-                    RankingBasedMatcher(
-                        distance=SignalsMeanDistance(
-                            signal_identifiers=[
-                                "LabelEmbeddingSignal",
-                                "TextEmbeddingSignal",
-                                "ContextSentenceEmbeddingSignal",
-                                "RelativePositionSignal"
-                            ]
-                        ),
+                    RankingBasedMatcherVDB(
                         max_num_feedback=100,
                         len_ranked_list=10,
                         max_distance=0.2,
@@ -385,10 +389,7 @@ class WannaDBAPI(QObject):
                                 CopyNormalizer(),
                                 OntoNotesLabelParaphraser(),
                                 SplitAttributeNameLabelParaphraser(do_lowercase=True, splitters=[" ", "_"]),
-                                SBERTLabelEmbedder("SBERTBertLargeNliMeanTokensResource"),
                                 SBERTTextEmbedder("SBERTBertLargeNliMeanTokensResource"),
-                                BERTContextSentenceEmbedder("BertLargeCasedResource"),
-                                RelativePositionEmbedder()
                             ]
                         ),
                         find_additional_nuggets=find_additional_nuggets

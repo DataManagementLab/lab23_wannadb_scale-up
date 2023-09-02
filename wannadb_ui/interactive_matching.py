@@ -410,7 +410,7 @@ class DocumentWidget(QWidget):
         self.document = nugget.document
         self.original_nugget = nugget
         self.current_nugget = nugget
-        self.nuggets_sorted_by_distance = list(sorted(self.document.nuggets, key=lambda x: x[CachedDistanceSignal]))
+        #self.nuggets_sorted_by_distance = list(sorted(self.document.nuggets, key=lambda x: x[CachedDistanceSignal]))
         self.nuggets_in_order = list(sorted(self.document.nuggets, key=lambda x: x.start_char))
         self.custom_selection_item_widget.hide()
 

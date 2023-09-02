@@ -181,9 +181,9 @@ def test_vector_search(document_base):
 def test_corona():
     result_dict = compute_embedding_distances()
     
-def test_conoa_bson():
+def test_corona_bson():
     
-    #generate_and_store_embedding("D:\\UNI\\wannaDB\\datasets\\corona\\raw-documents")
+    #generate_and_store_embedding("C:\\Users\\Pascal\\Desktop\\WannaDB\\lab23_wannadb_scale-up\\datasets\\corona\\raw-documents")
     result_dict = compute_embedding_distances()
     time_without, distances_without = compute_embedding_distances_withoutVDB()
     
