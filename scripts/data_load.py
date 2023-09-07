@@ -5,11 +5,6 @@ from tqdm import tqdm
 # Load the data
 dataset = load_dataset("wikipedia", "20220301.en")
 
-# Sort the data based on the 'id' column
-print("Sorting data...")
-sorted_indices = sorted(range(len(dataset['train'])), key=lambda k: dataset['train']['id'][k])
-sorted_dataset = dataset['train'].select(sorted_indices)
-
 # Define subset sizes
 sizes = {
     "tiny": 50,
@@ -20,17 +15,25 @@ sizes = {
     "large": 50000,
     "very_large": 100000,
     "huge": 1000000,
-    "enormous": len(sorted_dataset)  # approximately 5 million
+    "enormous": len(dataset['train'])  # get the total number of entries
 }
 
 subsets = {}
 start_index = 0
+dataset_length = len(dataset['train'])
 
 # Create subsets based on the sizes
 print("Creating subsets...")
 for name, size in tqdm(sizes.items()):
+    # Ensure we're not trying to select more data than available
+    if start_index >= dataset_length:
+        break
+
     end_index = start_index + size
-    subsets[name] = sorted_dataset.select(range(start_index, end_index))
+    # Ensure the end index doesn't exceed the dataset length
+    end_index = min(end_index, dataset_length)
+
+    subsets[name] = dataset['train'].select(range(start_index, end_index))
     start_index = end_index
 
 # Save each entry of each subset in its own file
@@ -50,4 +53,7 @@ for name, subset in tqdm(subsets.items()):
             file.write(entry['text'] + "\n\n")  # Two line breaks between entries
 
 print("Subsets saved!")
+
+
+
 

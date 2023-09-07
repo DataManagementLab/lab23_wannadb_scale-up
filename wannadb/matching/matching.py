@@ -14,7 +14,7 @@ from wannadb.interaction import BaseInteractionCallback
 from wannadb.matching.distance import BaseDistance
 from wannadb.statistics import Statistics
 from wannadb.status import BaseStatusCallback
-from wannadb.data.vector_database import vectordb, VECTORDB
+from wannadb.data.vector_database import vectordb
 import cProfile, pstats, io
 from pstats import SortKey
 
@@ -139,7 +139,7 @@ class RankingBasedMatcher(BaseMatcher):
             tik: float = time.time()
 
             distances: np.ndarray = self._distance.compute_distances(
-                [attribute], document_base, statistics["distance"]
+                [attribute], document_base.nuggets, statistics["distance"]
             )[0]
             for nugget, distance in zip(document_base.nuggets, distances):
                 nugget[CachedDistanceSignal] = CachedDistanceSignal(distance)
@@ -523,39 +523,40 @@ class RankingBasedMatcherVDB(BaseMatcher):
         statistics["num_documents"] = len(document_base.documents)
         statistics["num_nuggets"] = len(document_base.nuggets)
 
-        with vectordb() as vdb:
-            pr = cProfile.Profile()
-            pr.enable()
+        logger.info(f"Aufruf VDB!!")
+
+        pr = cProfile.Profile()
+        pr.enable()
 
             #logger.info("load vector database")
             #vdb.extract_nuggets(document_base)
 
         
 
-            for attribute in document_base.attributes:
-                feedback_result: Dict[str, Any] = interaction_callback(
-                    self.identifier,
-                    {
-                        "do-attribute-request": None,
-                        "attribute": attribute
-                    }
-                )
+        for attribute in document_base.attributes:
+            feedback_result: Dict[str, Any] = interaction_callback(
+                self.identifier,
+                {
+                    "do-attribute-request": None,
+                    "attribute": attribute
+                }
+            )
 
-                if not feedback_result["do-attribute"]:
-                    logger.info(f"Skip attribute '{attribute.name}'.")
-                    statistics[attribute.name]["skipped"] = True
-                    continue
+            if not feedback_result["do-attribute"]:
+                logger.info(f"Skip attribute '{attribute.name}'.")
+                statistics[attribute.name]["skipped"] = True
+                continue
 
-                logger.info(f"Matching attribute '{attribute.name}'.")
-                self._max_distance = self._default_max_distance
-                statistics[attribute.name]["max_distances"] = [self._max_distance]
-                statistics[attribute.name]["feedback_durations"] = []
+            logger.info(f"Matching attribute '{attribute.name}'.")
+            self._max_distance = self._default_max_distance
+            statistics[attribute.name]["max_distances"] = [self._max_distance]
+            statistics[attribute.name]["feedback_durations"] = []
 
-                if any((attribute.name in document.attribute_mappings.keys() for document in document_base.documents)):
-                    logger.info(f"Attribute '{attribute.name}' has already been matched before.")
-                    continue
+            if any((attribute.name in document.attribute_mappings.keys() for document in document_base.documents)):
+                logger.info(f"Attribute '{attribute.name}' has already been matched before.")
+                continue
 
-
+        with vectordb() as vdb:
                 # compute initial distances as distances to label
                 logger.info("Compute initial distances and initialize documents.")
                 tik: float = time.time()
@@ -804,20 +805,22 @@ class RankingBasedMatcherVDB(BaseMatcher):
                     if current_guess[CachedDistanceSignal] < self._max_distance:
                         statistics[attribute.name]["num_guessed_match"] += 1
                         document.attribute_mappings[attribute.name] = [current_guess]
+                        logger.info(f"Document: {document.name}; Attribute: {attribute.name}; Nugget: {current_guess.text}")
                     else:
                         statistics[attribute.name]["num_blocked_by_max_distance"] += 1
                         document.attribute_mappings[attribute.name] = []
 
                 tak: float = time.time()
                 logger.info(f"Updated remaining documents in {tak - tik} seconds.")
-            pr.disable()
-            s = io.StringIO()
-            sortby = SortKey.CUMULATIVE
-            ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-            ps.print_stats()
-            print(s.getvalue())
-            with open('old_current_match.txt', 'w+') as f:
-                f.write(s.getvalue()) 
+        logger.info("LEFT VDBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB")
+        pr.disable()
+        s = io.StringIO()
+        sortby = SortKey.CUMULATIVE
+        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+        ps.print_stats()
+        print(s.getvalue())
+        with open('old_current_match.txt', 'w+') as f:
+            f.write(s.getvalue()) 
 
     def to_config(self) -> Dict[str, Any]:
         return {

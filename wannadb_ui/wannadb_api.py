@@ -170,7 +170,7 @@ class WannaDBAPI(QObject):
                 self.cache_db.create_input_docs_table(INPUT_DOCS_COLUMN_NAME, document_base.documents)
 
                 self.status.emit("Loading vector database!",-1)
-              #  with vectordb() as vdb:
+                #with vectordb() as vdb:
                 #    vdb.extract_nuggets(document_base)
 
                 self.document_base_to_ui.emit(document_base)
@@ -376,6 +376,7 @@ class WannaDBAPI(QObject):
                 [
                     SplitAttributeNameLabelParaphraser(do_lowercase=True, splitters=[" ", "_"]),
                     ContextSentenceCacher(),
+                    SBERTLabelEmbedder("SBERTBertLargeNliMeanTokensResource"),
                     RankingBasedMatcherVDB(
                         max_num_feedback=100,
                         len_ranked_list=10,

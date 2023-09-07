@@ -42,6 +42,7 @@ class InteractiveMatchingWidget(MainWindowContent):
         self.document_widget.disable_input()
 
     def handle_feedback_request(self, feedback_request):
+        logging.info(f"TEST Feedback_Request Attribute Name:{feedback_request['attribute'].name}")
         self.header.setText(f"Attribute: {feedback_request['attribute'].name}")
         self.nugget_list_widget.update_nuggets(feedback_request)
         self.enable_input()

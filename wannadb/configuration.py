@@ -249,6 +249,7 @@ class Pipeline(BaseConfigurableElement):
         status_callback("Running the pipeline...", -1)
 
         for ix, pipeline_element in enumerate(self._pipeline_elements):
+            logger.info(f"pipeline-element-{ix}")
             pipeline_element(document_base, interaction_callback, status_callback, statistics[f"pipeline-element-{ix}"])
 
         status_callback("Running the pipeline...", 1)

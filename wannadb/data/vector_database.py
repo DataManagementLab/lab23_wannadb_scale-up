@@ -72,35 +72,33 @@ index_params = {
 
 logger: logging.Logger = logging.getLogger(__name__)
 
-VECTORDB: Optional["vectordb"] = None
+logger: logging.Logger = logging.getLogger(__name__)
 
 class vectordb:
-    """
-    Interface for vector database.
-    """
+    ...
+    _instance = None
+
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super(vectordb, cls).__new__(cls, *args, **kwargs)
+        return cls._instance
 
     def __init__(self) -> None:
         """Initialize the vector database"""
-        global VECTORDB
-
-        if VECTORDB is not None:
-            logger.error("Vector database already initialized")
-            assert False, "There can only be one vector database"
-        else:
-            VECTORDB = self
+        if hasattr(self, "_already_initialized"):
+            return
 
         self._host = 'localhost'
         self._port = 19530
-        self._embedding_identifier = [
-                "TextEmbeddingSignal"
-            ]
+        self._embedding_identifier = ["TextEmbeddingSignal"]
         self._embedding_collection = None
 
         logger.info("Vector database initialized")
-        
-        
-    
 
+        self._already_initialized = True
+
+
+        
     def __enter__(self) -> connections:
         logger.info("Connecting to vector database")
         connections.connect(alias='default',host=self._host, port=self._port)
@@ -180,12 +178,13 @@ class vectordb:
                     }
             
             results = embedding_collection.search(**search_param)
-            logger.info(f"results: {results}")
-            logger.info(f"results: {results[0].ids}")
+            logger.info(f"results for document: {i.name}: Result: {results}")
+            logger.info(f"results: {results[0].ids} distance: {results[0].distances} ")
             if results[0].ids: 
                 i[CurrentMatchIndexSignal] = CurrentMatchIndexSignal(int(results[0][0].id.split(";")[1])) #sicherstellen, dass ; nicht im document name verwendet wird
                 i.nuggets[int(results[0][0].id.split(";")[1])][CachedDistanceSignal] = CachedDistanceSignal(results[0][0].distance)
                 remaining_documents.append(i)
+                logger.info(f"Appended document!")
         return remaining_documents
     
     def updating_distances_documents(self, attribute: Attribute, documents: List[Document]):
