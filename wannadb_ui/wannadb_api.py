@@ -374,9 +374,7 @@ class WannaDBAPI(QObject):
 
             matching_phase = Pipeline(
                 [
-                    SplitAttributeNameLabelParaphraser(do_lowercase=True, splitters=[" ", "_"]),
                     ContextSentenceCacher(),
-                    SBERTLabelEmbedder("SBERTBertLargeNliMeanTokensResource"),
                     RankingBasedMatcherVDB(
                         max_num_feedback=100,
                         len_ranked_list=10,
@@ -415,7 +413,7 @@ class WannaDBAPI(QObject):
                     self.feedback_mutex.unlock()
 
                 return self.feedback
-
+            
             interaction_callback = InteractionCallback(interaction_callback_fn)
 
             matching_phase(document_base, interaction_callback, status_callback, statistics)

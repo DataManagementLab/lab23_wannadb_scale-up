@@ -15,6 +15,7 @@ from wannadb.matching.distance import BaseDistance
 from wannadb.statistics import Statistics
 from wannadb.status import BaseStatusCallback
 from wannadb.data.vector_database import vectordb
+from experiments.automatic_feedback import AutomaticRandomRankingBasedMatchingFeedback
 import cProfile, pstats, io
 from pstats import SortKey
 
@@ -528,24 +529,22 @@ class RankingBasedMatcherVDB(BaseMatcher):
         pr = cProfile.Profile()
         pr.enable()
 
-            #logger.info("load vector database")
-            #vdb.extract_nuggets(document_base)
-
-        
 
         for attribute in document_base.attributes:
-            feedback_result: Dict[str, Any] = interaction_callback(
-                self.identifier,
-                {
-                    "do-attribute-request": None,
-                    "attribute": attribute
-                }
-            )
 
-            if not feedback_result["do-attribute"]:
-                logger.info(f"Skip attribute '{attribute.name}'.")
-                statistics[attribute.name]["skipped"] = True
-                continue
+            if not isinstance(interaction_callback, AutomaticRandomRankingBasedMatchingFeedback):
+                feedback_result: Dict[str, Any] = interaction_callback(
+                    self.identifier,
+                    {
+                        "do-attribute-request": None,
+                        "attribute": attribute
+                    }
+                )
+
+                if not feedback_result["do-attribute"]:
+                    logger.info(f"Skip attribute '{attribute.name}'.")
+                    statistics[attribute.name]["skipped"] = True
+                    continue
 
             logger.info(f"Matching attribute '{attribute.name}'.")
             self._max_distance = self._default_max_distance
@@ -556,7 +555,7 @@ class RankingBasedMatcherVDB(BaseMatcher):
                 logger.info(f"Attribute '{attribute.name}' has already been matched before.")
                 continue
 
-        with vectordb() as vdb:
+            with vectordb() as vdb:
                 # compute initial distances as distances to label
                 logger.info("Compute initial distances and initialize documents.")
                 tik: float = time.time()
@@ -573,12 +572,14 @@ class RankingBasedMatcherVDB(BaseMatcher):
                 num_feedback: int = 0
                 continue_matching: bool = True
                 while continue_matching and num_feedback < self._max_num_feedback and remaining_documents != []:
-                    # sort remaining documents by distance
+                    # sort remaining documents by distance #############################################################brauchen wir das noch?
                     remaining_documents = list(sorted(
                         remaining_documents,
                         key=lambda x: x.nuggets[x[CurrentMatchIndexSignal]][CachedDistanceSignal],
                         reverse=True
                     ))
+
+                    #logger.info(f"#####################################################################Remaining documents: {remaining_documents}")
 
                     if self._sampling_mode == "MOST_UNCERTAIN":
                         selected_documents: List[Document] = remaining_documents[:self._len_ranked_list]
@@ -628,6 +629,8 @@ class RankingBasedMatcherVDB(BaseMatcher):
                         logger.error(f"Unknown sampling mode '{self._sampling_mode}'!")
                         assert False, f"Unknown sampling mode '{self._sampling_mode}'!"
 
+                    #logger.info(f"####################################################Selected documents: {selected_documents}")
+
                     # present documents to the user for feedback   
                     feedback_nuggets, feedback_nuggets_old_cached_distances = zip(
                     *(
@@ -637,6 +640,7 @@ class RankingBasedMatcherVDB(BaseMatcher):
                      )
                     )
                     
+
                     num_feedback += 1
                     statistics[attribute.name]["num_feedback"] += 1
                     t0 = time.time()
@@ -651,6 +655,8 @@ class RankingBasedMatcherVDB(BaseMatcher):
                             "num-nuggets-below": num_nuggets_below
                         }
                     )
+
+                    logger.info(f"######################################################################Attribute: {attribute}")
                     t1 = time.time()
                     statistics[attribute.name]["feedback_durations"].append(t1 - t0)
 

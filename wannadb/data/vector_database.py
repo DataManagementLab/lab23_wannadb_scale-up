@@ -21,7 +21,7 @@ from wannadb.data.data import DocumentBase, Attribute, Document, InformationNugg
 import time
 import numpy as np
 from wannadb.statistics import Statistics
-from wannadb.data.signals import LabelEmbeddingSignal, TextEmbeddingSignal, ContextSentenceEmbeddingSignal, RelativePositionSignal,UserProvidedExamplesSignal, CachedDistanceSignal, CurrentMatchIndexSignal, NewCurrentMatchIndexSignal
+from wannadb.data.signals import LabelEmbeddingSignal, TextEmbeddingSignal, ContextSentenceEmbeddingSignal, RelativePositionSignal,UserProvidedExamplesSignal, CachedDistanceSignal, CurrentMatchIndexSignal
 from scipy.spatial.distance import cosine
 from sklearn.metrics.pairwise import cosine_distances
 
@@ -184,7 +184,7 @@ class vectordb:
                 i[CurrentMatchIndexSignal] = CurrentMatchIndexSignal(int(results[0][0].id.split(";")[1])) #sicherstellen, dass ; nicht im document name verwendet wird
                 i.nuggets[int(results[0][0].id.split(";")[1])][CachedDistanceSignal] = CachedDistanceSignal(results[0][0].distance)
                 remaining_documents.append(i)
-                logger.info(f"Appended document!")
+                logger.info(f"Appended nugget: {results[0].ids}; To document {i.name} cached index: {i[CurrentMatchIndexSignal]}; Cached distance {i.nuggets[i[CurrentMatchIndexSignal]][CachedDistanceSignal]}")
         return remaining_documents
     
     def updating_distances_documents(self, attribute: Attribute, documents: List[Document]):
