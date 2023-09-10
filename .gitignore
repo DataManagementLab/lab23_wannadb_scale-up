@@ -8,3 +8,6 @@
 __pycache__
 __pycache__/
 *.xlsx
+wiki_tiny.bson
+corona.bson
+milvus_test.py
