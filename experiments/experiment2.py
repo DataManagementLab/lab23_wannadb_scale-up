@@ -159,7 +159,7 @@ if __name__ == "__main__":
             with open(path, "rb") as file:
                 document_base = DocumentBase.from_bson(file.read())
 
-            wannadb_pipeline = Pipeline(
+            '''wannadb_pipeline = Pipeline(
                 [
                     ContextSentenceCacher(),
                     RankingBasedMatcherVDB(
@@ -180,7 +180,24 @@ if __name__ == "__main__":
                         )
                     )
                 ]
-            )
+            )'''
+
+            wannadb_pipeline = Pipeline([
+                ContextSentenceCacher(),
+                RankingBasedMatcher(
+                    distance=SignalsMeanDistance(
+                        signal_identifiers=[
+                            "TextEmbeddingSignal"
+                        ]
+                    ),
+                    max_num_feedback=10,
+                    len_ranked_list=10,
+                    max_distance=0.2,  
+                    num_random_docs=1,
+                    sampling_mode="AT_MAX_DISTANCE_THRESHOLD",  
+                    adjust_threshold=True
+                )
+            ])
 
             statistics["matching"]["config"] = wannadb_pipeline.to_config()
 
