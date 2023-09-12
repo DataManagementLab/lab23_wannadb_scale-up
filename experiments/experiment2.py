@@ -7,26 +7,35 @@ import numpy as np
 import seaborn as sns
 from matplotlib import pyplot as plt
 
+from pymilvus import (
+    connections,
+    utility,
+    FieldSchema,
+    CollectionSchema,
+    DataType,
+    Collection,
+)
+
 from wannadb.configuration import Pipeline
 from wannadb.data.data import Attribute, Document, DocumentBase
 from wannadb.interaction import EmptyInteractionCallback
 from wannadb.matching.distance import SignalsMeanDistance
 from wannadb.matching.matching import RankingBasedMatcher, RankingBasedMatcherVDB
 from wannadb.preprocessing.embedding import BERTContextSentenceEmbedder, FastTextLabelEmbedder, \
-    RelativePositionEmbedder, SBERTTextEmbedder, SBERTExamplesEmbedder
+    RelativePositionEmbedder, SBERTTextEmbedder, SBERTExamplesEmbedder, SBERTLabelEmbedder
 from wannadb.preprocessing.extraction import StanzaNERExtractor, SpacyNERExtractor
 from wannadb.preprocessing.label_paraphrasing import OntoNotesLabelParaphraser, SplitAttributeNameLabelParaphraser
 from wannadb.preprocessing.normalization import CopyNormalizer
-from wannadb.preprocessing.other_processing import ContextSentenceCacher
+from wannadb.preprocessing.other_processing import ContextSentenceCacher, CombineEmbedder
 from wannadb.resources import ResourceManager
 from wannadb.statistics import Statistics
 from wannadb.status import EmptyStatusCallback
-import datasets.corona.corona as dataset  # TODO: choose data set by changing 'aviation' to 'corona', 'countries', 'nobel', or 'skyscrapers'
+import datasets.corona.corona as dataset  
 from experiments.automatic_feedback import AutomaticRandomRankingBasedMatchingFeedback
 from experiments.baselines.baseline_bart_seq2seq import calculate_f1_scores
 from experiments.util import consider_overlap_as_match
 from wannadb.data.vector_database import vectordb
-from wannadb.data.signals import UserProvidedExamplesSignal
+from wannadb.data.signals import UserProvidedExamplesSignal, LabelEmbeddingSignal, TextEmbeddingSignal, ContextSentenceEmbeddingSignal
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger()
@@ -87,8 +96,11 @@ if __name__ == "__main__":
                 CopyNormalizer(),
                 OntoNotesLabelParaphraser(),
                 SplitAttributeNameLabelParaphraser(do_lowercase=True, splitters=[" ", "_"]),
+                SBERTLabelEmbedder("SBERTBertLargeNliMeanTokensResource"),
                 SBERTTextEmbedder("SBERTBertLargeNliMeanTokensResource"),
-                SBERTExamplesEmbedder("SBERTBertLargeNliMeanTokensResource")
+                BERTContextSentenceEmbedder("BertLargeCasedResource"),
+                RelativePositionEmbedder(),
+                CombineEmbedder()
             ])
 
             statistics["preprocessing"]["config"] = wannadb_pipeline.to_config()
@@ -137,10 +149,30 @@ if __name__ == "__main__":
                     statistics["preprocessing"]["results"]["num_extracted"][attribute] += 1
 
         ################################################################################################################
+        # Load embeddings into vector database
+        ################################################################################################################
+        '''
+        print(f"Amount of nuggets: {len(document_base.nuggets)}")
+        for i in document_base.nuggets:
+            if not 'LabelEmbeddingSignal' in i.signals:
+                print(f"Nugget {i} {i.signals}, doesnt contain LabelEmbeddingSignal")
+                break
+            if not 'TextEmbeddingSignal' in i.signals:
+                print(f"Nugget {i} {i.signals}, doesnt contain TextEmbeddingSignal")
+                break
+            if not 'ContextSentenceEmbeddingSignal' in i.signals:
+                print(f"Nugget {i} {i.signals}, doesnt contain ContextSentenceEmbeddingSignal")
+                break
+        
+        with vectordb() as vdb:
+          vdb.extract_nuggets(document_base)
+          collection = Collection("Embeddings")
+          print(f"Amount of nuggets loaded into vector db: {collection.num_entities}")
+        '''
+
+        ################################################################################################################
         # matching phase
         ################################################################################################################
-        with vectordb() as vdb:
-            vdb.extract_nuggets(document_base)
 
         for attribute_name in dataset.ATTRIBUTES:
             statistics["matching"]["results"]["considered_as_match"][attribute_name] = set()
@@ -159,7 +191,7 @@ if __name__ == "__main__":
             with open(path, "rb") as file:
                 document_base = DocumentBase.from_bson(file.read())
 
-            '''wannadb_pipeline = Pipeline(
+            wannadb_pipeline = Pipeline(
                 [
                     ContextSentenceCacher(),
                     RankingBasedMatcherVDB(
@@ -169,7 +201,44 @@ if __name__ == "__main__":
                         num_random_docs=1,
                         sampling_mode="AT_MAX_DISTANCE_THRESHOLD",
                         adjust_threshold=True,
+                        embedding_identifier=[
+                                         "LabelEmbeddingSignal",
+                                          "TextEmbeddingSignal",
+                                          "ContextSentenceEmbeddingSignal"
+
+                        ],
                         nugget_pipeline=Pipeline(
+                            [
+                                ContextSentenceCacher(),
+                                CopyNormalizer(),
+                                OntoNotesLabelParaphraser(),
+                                SplitAttributeNameLabelParaphraser(do_lowercase=True, splitters=[" ", "_"]),
+                                SBERTTextEmbedder("SBERTBertLargeNliMeanTokensResource"),
+                                CombineEmbedder()
+                            ]
+                        )
+                    )
+                ]
+            )
+
+            '''
+            wannadb_pipeline = Pipeline([
+                ContextSentenceCacher(),
+                RankingBasedMatcher(
+                    distance=SignalsMeanDistance(
+                        signal_identifiers=[
+                            "LabelEmbeddingSignal",
+                            "TextEmbeddingSignal",
+                            "ContextSentenceEmbeddingSignal"
+                        ]
+                    ),
+                    max_num_feedback=10,
+                    len_ranked_list=10,
+                    max_distance=0.2,  
+                    num_random_docs=1,
+                    sampling_mode="AT_MAX_DISTANCE_THRESHOLD",  
+                    adjust_threshold=True,
+                    nugget_pipeline=Pipeline(
                             [
                                 ContextSentenceCacher(),
                                 CopyNormalizer(),
@@ -178,26 +247,9 @@ if __name__ == "__main__":
                                 SBERTTextEmbedder("SBERTBertLargeNliMeanTokensResource"),
                             ]
                         )
-                    )
-                ]
-            )'''
-
-            wannadb_pipeline = Pipeline([
-                ContextSentenceCacher(),
-                RankingBasedMatcher(
-                    distance=SignalsMeanDistance(
-                        signal_identifiers=[
-                            "TextEmbeddingSignal"
-                        ]
-                    ),
-                    max_num_feedback=10,
-                    len_ranked_list=10,
-                    max_distance=0.2,  
-                    num_random_docs=1,
-                    sampling_mode="AT_MAX_DISTANCE_THRESHOLD",  
-                    adjust_threshold=True
                 )
             ])
+            '''
 
             statistics["matching"]["config"] = wannadb_pipeline.to_config()
 

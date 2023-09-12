@@ -11,7 +11,7 @@ from wannadb import resources
 from wannadb.configuration import BasePipelineElement, register_configurable_element
 from wannadb.data.data import Attribute, DocumentBase, InformationNugget
 from wannadb.data.signals import ContextSentenceEmbeddingSignal, LabelEmbeddingSignal, RelativePositionSignal, \
-    TextEmbeddingSignal, UserProvidedExamplesSignal, NaturalLanguageLabelSignal, CachedContextSentenceSignal
+    TextEmbeddingSignal, UserProvidedExamplesSignal, NaturalLanguageLabelSignal, CachedContextSentenceSignal, CombinedEmbeddingSignal
 from wannadb.interaction import BaseInteractionCallback
 from wannadb.statistics import Statistics
 from wannadb.status import BaseStatusCallback
@@ -662,3 +662,5 @@ class FastTextLabelEmbedder(BaseEmbedder):
     @classmethod
     def from_config(cls, config: Dict[str, Any]) -> "FastTextLabelEmbedder":
         return cls(config["embedding_resource_identifier"], config["do_lowercase"], config["splitters"])
+    
+

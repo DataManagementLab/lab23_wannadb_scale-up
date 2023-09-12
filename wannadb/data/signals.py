@@ -361,3 +361,9 @@ class ContextSentenceEmbeddingSignal(BaseNumpyArraySignal):
     """Embedding of the nugget's textual context sentence."""
     identifier: str = "ContextSentenceEmbeddingSignal"
     do_serialize: bool = True
+
+@register_signal
+class CombinedEmbeddingSignal(BaseNumpyArraySignal):
+    """Combined Embedding signal which will be stored in vector database."""
+    identifier: str = "CombinedEmbeddingSignal"
+    do_serialize: bool = True

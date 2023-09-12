@@ -19,7 +19,7 @@ from wannadb.preprocessing.extraction import StanzaNERExtractor, SpacyNERExtract
 from wannadb.preprocessing.label_paraphrasing import OntoNotesLabelParaphraser, \
     SplitAttributeNameLabelParaphraser
 from wannadb.preprocessing.normalization import CopyNormalizer
-from wannadb.preprocessing.other_processing import ContextSentenceCacher
+from wannadb.preprocessing.other_processing import ContextSentenceCacher, CombineEmbedder
 from wannadb.statistics import Statistics
 from wannadb.status import StatusCallback
 from wannadb_parsql.cache_db import SQLiteCacheDB
@@ -125,8 +125,11 @@ class WannaDBAPI(QObject):
                 CopyNormalizer(),
                 OntoNotesLabelParaphraser(),
                 SplitAttributeNameLabelParaphraser(do_lowercase=True, splitters=[" ", "_"]),
+                SBERTLabelEmbedder("SBERTBertLargeNliMeanTokensResource"),
                 SBERTTextEmbedder("SBERTBertLargeNliMeanTokensResource"),
-                SBERTExamplesEmbedder("SBERTBertLargeNliMeanTokensResource")
+                BERTContextSentenceEmbedder("BertLargeCasedResource"),
+                RelativePositionEmbedder(),
+                CombineEmbedder()
             ])
 
             # run preprocessing phase
@@ -137,13 +140,14 @@ class WannaDBAPI(QObject):
 
             preprocessing_phase(document_base, EmptyInteractionCallback(), status_callback, statistics)
 
+            # load vector database
+            self.status.emit("Loading vector database...", -1)
+            with vectordb() as vdb:
+                vdb.extract_nuggets(document_base)
+
             self.document_base_to_ui.emit(document_base)
             self.statistics_to_ui.emit(statistics)
             self.finished.emit("Finished!")
-
-            ####Test VDB Extraction####
-            with vectordb() as vdb:
-                vdb.extract_nuggets(document_base)
 
         except FileNotFoundError:
             logger.error("Directory does not exist!")
@@ -170,8 +174,8 @@ class WannaDBAPI(QObject):
                 self.cache_db.create_input_docs_table(INPUT_DOCS_COLUMN_NAME, document_base.documents)
 
                 self.status.emit("Loading vector database!",-1)
-                #with vectordb() as vdb:
-                #    vdb.extract_nuggets(document_base)
+                with vectordb() as vdb:
+                    vdb.extract_nuggets(document_base)
 
                 self.document_base_to_ui.emit(document_base)
                 self.finished.emit("Finished!")
@@ -382,6 +386,11 @@ class WannaDBAPI(QObject):
                         num_random_docs=1,
                         sampling_mode="AT_MAX_DISTANCE_THRESHOLD",
                         adjust_threshold=True,
+                        embedding_identifier = ["LabelEmbeddingSignal",
+                                                "TextEmbeddingSignal",
+                                                "ContextSentenceEmbeddingSignal"
+
+                        ],
                         nugget_pipeline=Pipeline(
                             [
                                 ContextSentenceCacher(),
@@ -389,6 +398,7 @@ class WannaDBAPI(QObject):
                                 OntoNotesLabelParaphraser(),
                                 SplitAttributeNameLabelParaphraser(do_lowercase=True, splitters=[" ", "_"]),
                                 SBERTTextEmbedder("SBERTBertLargeNliMeanTokensResource"),
+                                CombineEmbedder()
                             ]
                         ),
                         find_additional_nuggets=find_additional_nuggets

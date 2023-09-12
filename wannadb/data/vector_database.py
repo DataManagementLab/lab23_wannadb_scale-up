@@ -21,7 +21,8 @@ from wannadb.data.data import DocumentBase, Attribute, Document, InformationNugg
 import time
 import numpy as np
 from wannadb.statistics import Statistics
-from wannadb.data.signals import LabelEmbeddingSignal, TextEmbeddingSignal, ContextSentenceEmbeddingSignal, RelativePositionSignal,UserProvidedExamplesSignal, CachedDistanceSignal, CurrentMatchIndexSignal
+from wannadb.data.signals import LabelEmbeddingSignal, TextEmbeddingSignal, ContextSentenceEmbeddingSignal, RelativePositionSignal,UserProvidedExamplesSignal, \
+    CachedDistanceSignal, CurrentMatchIndexSignal, CombinedEmbeddingSignal
 from scipy.spatial.distance import cosine
 from sklearn.metrics.pairwise import cosine_distances
 
@@ -38,41 +39,8 @@ from wannadb.resources import ResourceManager
 from wannadb.statistics import Statistics
 from wannadb.status import EmptyStatusCallback
 
-# Nugget schema
-id = FieldSchema(
-    name="id",
-    dtype=DataType.VARCHAR,
-    max_length=200,
-    is_primary=True,
-)
-embedding_type = FieldSchema( # embedding type
-    name="embedding_type",
-    dtype=DataType.VARCHAR,
-    max_length=200,
-)
-embedding_value = FieldSchema( # embedding value
-    name="embedding_value",
-    dtype=DataType.FLOAT_VECTOR,
-    dim=1024,
-)
-embbeding_schema = CollectionSchema(
-    fields=[id, embedding_type, embedding_value],
-    description="Schema for nuggets",
-    enable_dynamic_field=True,
-)
-
-# vector index params
-
-index_params = {
-  "metric_type":"L2",
-  "index_type":"IVF_PQ",
-  "params":{"nlist":1024, "m":128}
-}
-
-
 logger: logging.Logger = logging.getLogger(__name__)
 
-logger: logging.Logger = logging.getLogger(__name__)
 
 class vectordb:
     ...
@@ -90,12 +58,41 @@ class vectordb:
 
         self._host = 'localhost'
         self._port = 19530
-        self._embedding_identifier = ["TextEmbeddingSignal"]
+        self._embedding_identifier = ["TextEmbeddingSignal",
+                                      "LabelEmbeddingSignal",
+                                      "ContextSentenceEmbeddingSignal"
+                                      ]
         self._embedding_collection = None
 
         logger.info("Vector database initialized")
 
         self._already_initialized = True
+
+        # Nugget schema
+        self._id = FieldSchema(
+            name="id",
+            dtype=DataType.VARCHAR,
+            max_length=200,
+            is_primary=True,
+        )
+        self._embedding_value = FieldSchema( 
+            name="embedding_value",
+            dtype=DataType.FLOAT_VECTOR,
+            dim=1024*3,
+        )
+        self._embbeding_schema = CollectionSchema(
+            fields=[self._id, self._embedding_value],
+            description="Schema for nuggets",
+            enable_dynamic_field=True,
+        )
+
+        # vector index params
+
+        self._index_params = {
+        "metric_type":"L2",
+        "index_type":"IVF_PQ",
+        "params":{"nlist":1024*len(self._embedding_identifier), "m":128}
+        }
 
 
         
@@ -118,7 +115,7 @@ class vectordb:
         if "Embeddings" not in utility.list_collections():
              collection = Collection(
                     name="Embeddings",
-                    schema=embbeding_schema,
+                    schema=self._embbeding_schema,
                     using="default",
                     shards_num=1,
                 )
@@ -128,15 +125,15 @@ class vectordb:
         collection = Collection("Embeddings")
         for document in documentBase.documents:
                 for id,nugget in enumerate(document.nuggets):
-                    amount_embeddings = set(self._embedding_identifier).intersection(set(nugget.signals.keys()))
-                    if amount_embeddings:
-                        data = [
-                            [f"{document.name};{id}"]*len(amount_embeddings),
-                            [key for key in nugget.signals.keys() if key in amount_embeddings],
-                            [nugget.signals[key].value for key in nugget.signals.keys() if key in amount_embeddings],     
+
+                    combined_embedding = nugget[CombinedEmbeddingSignal]
+                    data = [
+                        [f"{document.name};{id}"],
+                        [combined_embedding],     
                         ]
-                        collection.insert(data)
-                        logger.info(f"Inserted nugget {id} from document {document.name} into collection {document.name}")
+                    collection.insert(data)
+                    logger.info(f"Inserted nugget {id} {combined_embedding} from document {document.name} into collection")
+
                 collection.flush()
         logger.info("Embedding insertion finished")
 
@@ -144,33 +141,29 @@ class vectordb:
         logger.info("Start indexing")
         collection.create_index(
             field_name='embedding_value', 
-            index_params=index_params
+            index_params=self._index_params
             )    
-
         #Scalar index
         collection.create_index(
             field_name='id',
             index_name='scalar_index'
-        )     
+        ) 
         logger.info("Indexing finished")
         logger.info("Extraction finished")
 
         collection.load()
         self._embedding_collection = Collection('Embeddings')
 
-    def compute_inital_distances(self, attribute :Attribute, document_base: DocumentBase) -> List[Document]:
-        attribute_embeddings= [attribute.signals['TextEmbeddingSignal'].value]
+    def compute_inital_distances(self, attribute_embedding : List[float], document_base: DocumentBase) -> List[Document]:
+
         remaining_documents: List[Document] = []
         embedding_collection = Collection('Embeddings')
-        
 
         for i in document_base.documents:
-            #Get the embeddings for the attribute
-            attribute_embeddings= [attribute.signals['TextEmbeddingSignal'].value]
 
             #Compute the distance between the embeddings of the attribute and the embeddings of the nuggets
             search_param= {
-                'data' : attribute_embeddings,
+                'data' : [attribute_embedding],
                 'anns_field' : "embedding_value",
                 'param' : {"metric_type": "L2", "params": {"nprobe": 1000}, "offset": 0},
                 'limit' : 1,
@@ -185,19 +178,17 @@ class vectordb:
                 i.nuggets[int(results[0][0].id.split(";")[1])][CachedDistanceSignal] = CachedDistanceSignal(results[0][0].distance)
                 remaining_documents.append(i)
                 logger.info(f"Appended nugget: {results[0].ids}; To document {i.name} cached index: {i[CurrentMatchIndexSignal]}; Cached distance {i.nuggets[i[CurrentMatchIndexSignal]][CachedDistanceSignal]}")
+       
         return remaining_documents
     
-    def updating_distances_documents(self, attribute: Attribute, documents: List[Document]):
-        attribute_embeddings= [attribute.signals['TextEmbeddingSignal'].value]
+    def updating_distances_documents(self, target_embedding: List[float], documents: List[Document]):
         embedding_collection = Collection('Embeddings')
 
         for i in documents:
-            #Get the embeddings for the attribute
-            attribute_embeddings= [attribute.signals['TextEmbeddingSignal'].value]
 
             #Compute the distance between the embeddings of the attribute and the embeddings of the nuggets
             search_param= {
-                'data' : attribute_embeddings,
+                'data' : [target_embedding],
                 'anns_field' : "embedding_value",
                 'param' : {"metric_type": "L2", "params": {"nprobe": 1000}, "offset": 0},
                 'limit' : 1,

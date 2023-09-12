@@ -9,7 +9,7 @@ import numpy as np
 from wannadb.configuration import BasePipelineElement, register_configurable_element, Pipeline
 from wannadb.data.data import Document, DocumentBase, InformationNugget
 from wannadb.data.signals import CachedContextSentenceSignal, CachedDistanceSignal, \
-    SentenceStartCharsSignal, CurrentMatchIndexSignal, LabelSignal
+    SentenceStartCharsSignal, CurrentMatchIndexSignal, LabelSignal, LabelEmbeddingSignal, TextEmbeddingSignal, ContextSentenceEmbeddingSignal, CombinedEmbeddingSignal
 from wannadb.interaction import BaseInteractionCallback
 from wannadb.matching.distance import BaseDistance
 from wannadb.statistics import Statistics
@@ -111,18 +111,20 @@ class RankingBasedMatcher(BaseMatcher):
         statistics["num_nuggets"] = len(document_base.nuggets)
 
         for attribute in document_base.attributes:
-            feedback_result: Dict[str, Any] = interaction_callback(
-                self.identifier,
-                {
-                    "do-attribute-request": None,
-                    "attribute": attribute
-                }
-            )
 
-            if not feedback_result["do-attribute"]:
-                logger.info(f"Skip attribute '{attribute.name}'.")
-                statistics[attribute.name]["skipped"] = True
-                continue
+            if not isinstance(interaction_callback, AutomaticRandomRankingBasedMatchingFeedback):
+                feedback_result: Dict[str, Any] = interaction_callback(
+                    self.identifier,
+                    {
+                        "do-attribute-request": None,
+                        "attribute": attribute
+                    }
+                )
+
+                if not feedback_result["do-attribute"]:
+                    logger.info(f"Skip attribute '{attribute.name}'.")
+                    statistics[attribute.name]["skipped"] = True
+                    continue
 
             logger.info(f"Matching attribute '{attribute.name}'.")
             self._max_distance = self._default_max_distance
@@ -485,6 +487,7 @@ class RankingBasedMatcherVDB(BaseMatcher):
             sampling_mode: str,
             adjust_threshold: bool,
             nugget_pipeline: Pipeline,
+            embedding_identifier: List[str],
             find_additional_nuggets: Callable[[InformationNugget, List[Document]], List[Tuple[Document, int, int]]] = lambda nugget, documents: (),
     ) -> None:
         """
@@ -509,6 +512,7 @@ class RankingBasedMatcherVDB(BaseMatcher):
         self._sampling_mode: str = sampling_mode
         self._adjust_threshold: bool = adjust_threshold
         self._nugget_pipeline: Pipeline = nugget_pipeline
+        self._embedding_identifier: List[str] = embedding_identifier
         self._find_additional_nuggets = find_additional_nuggets
 
 
@@ -524,12 +528,11 @@ class RankingBasedMatcherVDB(BaseMatcher):
         statistics["num_documents"] = len(document_base.documents)
         statistics["num_nuggets"] = len(document_base.nuggets)
 
-        logger.info(f"Aufruf VDB!!")
 
         pr = cProfile.Profile()
         pr.enable()
 
-
+        logger.info("Start Rankinggggggggggggggggggggggggggggggggggggggg")
         for attribute in document_base.attributes:
 
             if not isinstance(interaction_callback, AutomaticRandomRankingBasedMatchingFeedback):
@@ -560,7 +563,25 @@ class RankingBasedMatcherVDB(BaseMatcher):
                 logger.info("Compute initial distances and initialize documents.")
                 tik: float = time.time()
 
-                remaining_documents = vdb.compute_inital_distances(attribute= attribute, document_base=document_base)
+                signals = ['LabelEmbeddingSignal', 'TextEmbeddingSignal', 'ContextSentenceEmbeddingSignal']
+
+                embedding_list = []
+                for signal in signals:
+                    if signal in self._embedding_identifier and signal in attribute.signals:
+                        embedding_list.append(attribute[signal])
+                        logger.info(f"{signal} for attribute: {attribute[signal]}")
+                    else:
+                        embedding_list.append(np.zeros(1024))
+
+
+                if len(embedding_list) > 0:
+                    combined_embedding =np.concatenate(embedding_list)
+                    logger.info(f"Combined embedding: {combined_embedding}")
+
+                
+                logger.info("Compute intialllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllll")
+
+                remaining_documents = vdb.compute_inital_distances(attribute_embedding= combined_embedding, document_base=document_base)
                 logger.info(f"Length remaining: {len(remaining_documents)}")
 
                 tak: float = time.time()
@@ -572,14 +593,11 @@ class RankingBasedMatcherVDB(BaseMatcher):
                 num_feedback: int = 0
                 continue_matching: bool = True
                 while continue_matching and num_feedback < self._max_num_feedback and remaining_documents != []:
-                    # sort remaining documents by distance #############################################################brauchen wir das noch?
                     remaining_documents = list(sorted(
                         remaining_documents,
                         key=lambda x: x.nuggets[x[CurrentMatchIndexSignal]][CachedDistanceSignal],
                         reverse=True
                     ))
-
-                    #logger.info(f"#####################################################################Remaining documents: {remaining_documents}")
 
                     if self._sampling_mode == "MOST_UNCERTAIN":
                         selected_documents: List[Document] = remaining_documents[:self._len_ranked_list]
@@ -629,7 +647,6 @@ class RankingBasedMatcherVDB(BaseMatcher):
                         logger.error(f"Unknown sampling mode '{self._sampling_mode}'!")
                         assert False, f"Unknown sampling mode '{self._sampling_mode}'!"
 
-                    #logger.info(f"####################################################Selected documents: {selected_documents}")
 
                     # present documents to the user for feedback   
                     feedback_nuggets, feedback_nuggets_old_cached_distances = zip(
@@ -656,7 +673,6 @@ class RankingBasedMatcherVDB(BaseMatcher):
                         }
                     )
 
-                    logger.info(f"######################################################################Attribute: {attribute}")
                     t1 = time.time()
                     statistics[attribute.name]["feedback_durations"].append(t1 - t0)
 
@@ -732,9 +748,6 @@ class RankingBasedMatcherVDB(BaseMatcher):
                         feedback_result["document"].attribute_mappings[attribute.name] = [confirmed_nugget]
                         remaining_documents.remove(feedback_result["document"])
 
-
-                        distances_based_on_label = False
-
                         # Find more nuggets that are similar to this match
                         additional_nuggets: List[Tuple[Document, int, int]] = self._find_additional_nuggets(confirmed_nugget, remaining_documents)
                         statistics[attribute.name]["num_additional_nuggets"] += len(additional_nuggets)
@@ -750,8 +763,9 @@ class RankingBasedMatcherVDB(BaseMatcher):
                         # TODO: maybe there is a better way than to compute distances based on currently confirmed nugget?
                         # calculate proper distances based on currently confirmed nugget
                         # update the distances for the other documents
-                        
-                        vdb.updating_distances_documents(attribute=confirmed_nugget, documents = remaining_documents)
+
+                        target = confirmed_nugget[CombinedEmbeddingSignal]
+                        vdb.updating_distances_documents(target_embedding=target, documents = remaining_documents)
 
                     elif feedback_result["message"] == "is-match":
                         statistics[attribute.name]["num_confirmed_match"] += 1
@@ -760,8 +774,9 @@ class RankingBasedMatcherVDB(BaseMatcher):
 
                         # update the distances for the other documents
                         # update the distances for the other documents
-                        vdb.updating_distances_documents(attribute=feedback_result["nugget"], documents = remaining_documents)
-                        distances_based_on_label = False
+
+                        target = feedback_result["nugget"][CombinedEmbeddingSignal]
+                        vdb.updating_distances_documents(target_embedding=target, documents = remaining_documents)
 
                         if self._adjust_threshold:
                             # threshold adjustment: if the confirmed nugget's distance is larger than the threshold, update
@@ -818,7 +833,7 @@ class RankingBasedMatcherVDB(BaseMatcher):
 
                 tak: float = time.time()
                 logger.info(f"Updated remaining documents in {tak - tik} seconds.")
-        logger.info("LEFT VDBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB")
+
         pr.disable()
         s = io.StringIO()
         sortby = SortKey.CUMULATIVE
