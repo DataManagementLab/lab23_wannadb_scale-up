@@ -54,19 +54,19 @@ embedding_type = FieldSchema( # embedding type
 embedding_value = FieldSchema( # embedding value
     name="embedding_value",
     dtype=DataType.FLOAT_VECTOR,
-    dim=1024,
+    dim=2048,
 )
 embbeding_schema = CollectionSchema(
-    fields=[id, embedding_type, embedding_value],
+    fields=[id, embedding_value],
     description="Schema for nuggets",
     enable_dynamic_field=True,
 )
 
 # vector index params
 
-index_params = {
+INDEX_PARAMS = {
   "metric_type":"L2",
-  "index_type":"IVF_SQ8",
+  "index_type":"IVF_FLAT",
   "params":{"nlist":1024}
 }
 
@@ -94,8 +94,7 @@ class vectordb:
         self._port = 19530
         self._embedding_identifier = [
                 "LabelEmbeddingSignal",
-                "TextEmbeddingSignal",
-                "ContextSentenceEmbeddingSignal",
+                "TextEmbeddingSignal"
             ]
 
         logger.info("Vector database initialized")
@@ -115,15 +114,24 @@ class vectordb:
         logger.info("Disconnecting from vector database")
         connections.disconnect(alias='default')
         VECTORDB = None
+        
+        
+    def regenerate_index(self, index_params, collection_name = "Embeddings"):
+        collection = Collection(collection_name)
+        collection.drop_index()
+        collection.create_index(
+            field_name='embedding_value', 
+            index_params=index_params
+            )
 
 
-    def extract_nuggets(self, documentBase: DocumentBase) -> None:
+    def extract_nuggets(self, documentBase: DocumentBase, index_params=INDEX_PARAMS, collection_name = "Embeddings") -> None:
         """
         Extract nugget data from document base
         """
-        if "Embeddings" not in utility.list_collections():
+        if collection_name not in utility.list_collections():
              collection = Collection(
-                    name="Embeddings",
+                    name=collection_name,
                     schema=embbeding_schema,
                     using="default",
                     shards_num=1,
@@ -131,29 +139,33 @@ class vectordb:
              logger.info("Created collection Embeddings")
 
         logger.info("Start extracting nuggets from document base")
-        collection = Collection("Embeddings")
+        collection = Collection(collection_name)
         for document in documentBase.documents:
                 for id,nugget in enumerate(document.nuggets):
-                    amount_embeddings = set(self._embedding_identifier).intersection(set(nugget.signals.keys()))
-                    if amount_embeddings:
-                        data = [
-                            [f"{document.name};{str(nugget._start_char)};{str(nugget._end_char)}"]*len(amount_embeddings),
-                            [key for key in nugget.signals.keys() if key in amount_embeddings],
-                            [nugget.signals[key].value for key in nugget.signals.keys() if key in amount_embeddings],     
-                        ]
-                        collection.insert(data)
-                        logger.info(f"Inserted nugget {id} from document {document.name} into collection {document.name}")
+                    embedding_vector = []
+                    for embedding_name in self._embedding_identifier:
+                        embedding_vector_data = nugget.signals.get(embedding_name, None)
+                        if embedding_vector_data is not None:
+                            embedding_value = embedding_vector_data.value
+                        else:
+                            embedding_value = np.zeros(1024)    
+                            
+                        embedding_vector.extend(embedding_value)
+                    
+                    embedding_vector = np.array(embedding_vector)
+                    data = [
+                        [f"{document.name};{str(nugget._start_char)};{str(nugget._end_char)}"],
+                        [embedding_vector],     
+                    ]
+                    collection.insert(data)
+                    logger.info(f"Inserted nugget {id} from document {document.name} into collection {document.name}")
                 collection.flush()
         logger.info("Embedding insertion finished")
         logger.info("Start indexing")
         collection.create_index(
             field_name='embedding_value', 
             index_params=index_params
-            )
-        collection.create_index(
-            field_name="id", 
-            index_name="scalar_index",
-            )           
+            )         
         logger.info("Indexing finished")
         logger.info("Extraction finished")
     
@@ -249,7 +261,7 @@ def compute_distances(
             return np.divide(distances, np.sum(actually_present))
 
 
-def generate_and_store_embedding(input_path):
+def generate_and_store_embedding(input_path, index_params = INDEX_PARAMS):
     
     with ResourceManager() as resource_manager:
         documents = []
@@ -272,6 +284,16 @@ def generate_and_store_embedding(input_path):
                             SBERTLabelEmbedder("SBERTBertLargeNliMeanTokensResource"),
                             SBERTTextEmbedder("SBERTBertLargeNliMeanTokensResource"),
             ])
+        StanzaNERExtractor(),
+        SpacyNERExtractor("SpacyEnCoreWebLg"),
+        ContextSentenceCacher(),
+        CopyNormalizer(),
+        OntoNotesLabelParaphraser(),
+        SplitAttributeNameLabelParaphraser(do_lowercase=True, splitters=[" ", "_"]),
+        SBERTLabelEmbedder("SBERTBertLargeNliMeanTokensResource"),
+        SBERTTextEmbedder("SBERTBertLargeNliMeanTokensResource"),
+        BERTContextSentenceEmbedder("BertLargeCasedResource"),
+        RelativePositionEmbedder()
         #BERTContextSentenceEmbedder("BertLargeCasedResource"),
 
         statistics = Statistics(do_collect=True)
@@ -295,18 +317,21 @@ def generate_and_store_embedding(input_path):
             for i in utility.list_collections():
                     utility.drop_collection(i)
 
-            vb.extract_nuggets(document_base)
+            start_time_ = time.time()
+            vb.extract_nuggets(document_base, index_params)
+            print("Extraction: " + str(time.time() - start_time_))
             
         with open("corona.bson", "wb") as file:
             file.write(document_base.to_bson())
 
-        
 
-def compute_embedding_distances(path = "corona.bson", rounds= 10, nprobe_max= 1024, max_limit=16384 ):    
+def generate_new_index(index_params):
+    with vectordb() as vb:
+        vb.regenerate_index(index_params)
+
+def compute_embedding_distances(path = "corona.bson", rounds= 1, nprobe_max= 100, max_limit=2001 ):    
     
-    
-    embeddding_signals = ['LabelEmbeddingSignal', 'TextEmbeddingSignal', 'ContextSentenceEmbeddingSignal']
-    pr = cProfile.Profile()
+    # pr = cProfile.Profile()
     
     
     with open(path, "rb") as file:
@@ -317,7 +342,7 @@ def compute_embedding_distances(path = "corona.bson", rounds= 10, nprobe_max= 10
             return
                 
         with vectordb() as vb:
-            pr.enable()
+            # pr.enable()
             
             output = {}
             start_time_ = time.time()
@@ -329,54 +354,66 @@ def compute_embedding_distances(path = "corona.bson", rounds= 10, nprobe_max= 10
             #dist_collection.load()
             distances={}
             
-            for nprobe in range(1,nprobe_max, 20):
+            for nprobe in range(20,nprobe_max, 20):
                 search_params = {"metric_type": "L2", "params": {"nprobe": nprobe}, "offset": 0}
                 output[nprobe] = {}
-                for limit in range(1, max_limit, 500):
+                for limit in range(500, max_limit, 500):
                     time_sum = 0
+                    amount_distances = 0
                     for _ in range(rounds):
-                        amount_distances = 0
+                        
                         #for every attribute in the document base
                         start_time = time.time()
                         for attribute in document_base.attributes:
                             distances[attribute.name]={}
                             #for every embedding signal in the attribute
-                            for i in [signal.identifier for signal in attribute.signals.values() if signal.identifier in embeddding_signals]:
+                            #for i in [signal.identifier for signal in attribute.signals.values() if signal.identifier in embeddding_signals]:
 
-                                #Get the embeddings for the attribute
-                                attribute_embeddings= [attribute.signals[i].value]
+                            embedding_vector = []
+                            for embedding_name in vb._embedding_identifier:
+                                embedding_vector_data = attribute.signals.get(embedding_name, None)
+                                if embedding_vector_data is not None:
+                                    embedding_value = embedding_vector_data.value
+                                    
+                                else:
+                                    embedding_value = np.zeros(1024)
+                                embedding_vector.extend(embedding_value)
 
-                                #Compute the distance between the embeddings of the attribute and the embeddings of the nuggets
-                                results = embedding_collection.search(
-                                    data = attribute_embeddings,
-                                    anns_field="embedding_value",
-                                    param=search_params,
-                                    limit=limit,
-                                    expr = f"embedding_type == '{i}'"
-                                )
-                                #print(f"Attribute: {attribute.name}; Type of embedding: {i}; Amount distance values: {len(results[0].distances)}")
-                                amount_distances += len(results[0].distances)     
-                                distances[attribute.name][i]= dict(zip(results[0].ids, results[0].distances))
-                        time_sum += time.time() - start_time
+                            #Compute the distance between the embeddings of the attribute and the embeddings of the nuggets
+                            results = embedding_collection.search(
+                                data = [embedding_vector],
+                                anns_field="embedding_value",
+                                param=search_params,
+                                limit=limit
+                            )
+                            #print(f"Attribute: {attribute.name}; Type of embedding: {i}; Amount distance values: {len(results[0].distances)}")
+                            amount_distances += len(results[0].distances)   
+                            test = results[0].distances
+                            distances[attribute.name][0]= dict(zip(results[0].ids, results[0].distances))
+                            time_sum += time.time() - start_time
                     avg_time = time_sum / rounds
+                    avg_dist = amount_distances / rounds
                     output[nprobe][limit] = {
                             "time":avg_time,
-                            "amount_distances":amount_distances
+                            "amount_distances":avg_dist
                         }
                         
                 print(f"NProbe {nprobe}/1024")
                 print(time.time() - start_time_)
+                
+            embedding_collection.release()
 
-    #return output
-    pr.disable()
-    s = io.StringIO()
-    sortby = SortKey.CUMULATIVE
-    ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-    #ps.print_stats()
-    print(s.getvalue())
-    with open('vdb_current_match.txt', 'w+') as f:
-        f.write(s.getvalue())
-        
+    #
+    # pr.disable()
+    # s = io.StringIO()
+    # sortby = SortKey.CUMULATIVE
+    # ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+    # ps.print_stats()
+    # print(s.getvalue())
+    # with open('vdb_current_match.txt', 'w+') as f:
+    #     f.write(s.getvalue())
+    
+    return output
     print("VDB:--- %s seconds ---" % (time.time() - start_time))
     distance_mat = compute_distances(document_base.nuggets, document_base.attributes)
     print(f"Processed distances VDB: {amount_distances}")
