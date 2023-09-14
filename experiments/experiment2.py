@@ -151,7 +151,7 @@ if __name__ == "__main__":
         ################################################################################################################
         # Load embeddings into vector database
         ################################################################################################################
-        '''
+
         print(f"Amount of nuggets: {len(document_base.nuggets)}")
         for i in document_base.nuggets:
             if not 'LabelEmbeddingSignal' in i.signals:
@@ -168,7 +168,7 @@ if __name__ == "__main__":
           vdb.extract_nuggets(document_base)
           collection = Collection("Embeddings")
           print(f"Amount of nuggets loaded into vector db: {collection.num_entities}")
-        '''
+        
 
         ################################################################################################################
         # matching phase
