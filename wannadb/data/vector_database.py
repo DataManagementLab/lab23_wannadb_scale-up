@@ -14,13 +14,14 @@ from pymilvus import (
 
 from typing import List, Any, Tuple
 from wannadb.data.data import DocumentBase
-from typing import List, Any, Optional, Union
+from typing import List, Any, Optional, Union, Dict
 import logging
+import time
 from wannadb.data.data import DocumentBase, Attribute, Document, InformationNugget
 import numpy as np
 from wannadb.statistics import Statistics
 from wannadb.data.signals import LabelEmbeddingSignal, TextEmbeddingSignal, ContextSentenceEmbeddingSignal, RelativePositionSignal,UserProvidedExamplesSignal, \
-    CachedDistanceSignal, CurrentMatchIndexSignal, CombinedEmbeddingSignal
+    CachedDistanceSignal, CurrentMatchIndexSignal, CombinedEmbeddingSignal, POSTagsSignal
 from scipy.spatial.distance import cosine
 from sklearn.metrics.pairwise import cosine_distances
 
@@ -28,11 +29,11 @@ from sklearn.metrics.pairwise import cosine_distances
 from wannadb.configuration import Pipeline
 from wannadb.data.data import Document, DocumentBase
 from wannadb.interaction import EmptyInteractionCallback
-from wannadb.preprocessing.embedding import SBERTTextEmbedder, SBERTExamplesEmbedder
+from wannadb.preprocessing.embedding import SBERTTextEmbedder, SBERTExamplesEmbedder,BERTContextSentenceEmbedder, SBERTLabelEmbedder
 from wannadb.preprocessing.extraction import StanzaNERExtractor, SpacyNERExtractor
 from wannadb.preprocessing.label_paraphrasing import OntoNotesLabelParaphraser, SplitAttributeNameLabelParaphraser
 from wannadb.preprocessing.normalization import CopyNormalizer
-from wannadb.preprocessing.other_processing import ContextSentenceCacher
+from wannadb.preprocessing.other_processing import ContextSentenceCacher, CombineEmbedder
 from wannadb.resources import ResourceManager
 from wannadb.statistics import Statistics
 from wannadb.status import EmptyStatusCallback
@@ -56,10 +57,7 @@ class vectordb:
 
         self._host = 'localhost'
         self._port = 19530
-        self._embedding_identifier = ["TextEmbeddingSignal",
-                                      "LabelEmbeddingSignal",
-                                      "ContextSentenceEmbeddingSignal"
-                                      ]
+        self._embedding_identifier = ['LabelEmbeddingSignal', 'TextEmbeddingSignal', 'ContextSentenceEmbeddingSignal']
         self._embedding_collection = None
 
         logger.info("Vector database initialized")
@@ -74,7 +72,7 @@ class vectordb:
         )
         self._document_id = FieldSchema(
             name="document_id",
-            dtype=DataType.VARCHAR,
+            dtype=DataType.INT64,
             max_length = 200
         )
         self._embedding_value = FieldSchema( 
@@ -91,16 +89,16 @@ class vectordb:
         # vector index params
 
         self._index_params = {
-        "metric_type":"L2",
-        "index_type":"IVF_PQ",
-        "params":{"nlist":100, "m":128}
+        "metric_type":"COSINE",
+        "index_type":"IVF_FLAT",
+        "params":{"nlist":65536}
         }
 
         self._search_params = {
-        "metric_type": "L2", 
+        "metric_type": "COSINE", 
         "offset": 0, 
         "ignore_growing": False, 
-        "params": {"nprobe": 1000}
+        "params": {"nprobe": 65536}
         }
 
 
@@ -132,13 +130,14 @@ class vectordb:
 
         logger.info("Start extracting nuggets from document base")
         collection = Collection("Embeddings")
-        for document in documentBase.documents:
+        for doc_id, document in enumerate(documentBase.documents):
+                document.set_index(doc_id)
                 for id,nugget in enumerate(document.nuggets):
 
                     combined_embedding = nugget[CombinedEmbeddingSignal]
                     data = [
                         [id],
-                        [document.name],
+                        [doc_id],
                         [combined_embedding],     
                         ]
                     collection.insert(data)
@@ -153,11 +152,6 @@ class vectordb:
             field_name='embedding_value', 
             index_params=self._index_params
             )    
-        #Scalar index
-        collection.create_index(
-            field_name='id',
-            index_name='scalar_index'
-        ) 
         logger.info("Indexing finished")
         logger.info("Extraction finished")
 
@@ -168,49 +162,93 @@ class vectordb:
 
         remaining_documents: List[Document] = []
         embedding_collection = Collection('Embeddings')
+        print(f"Anzahl Dokumente: {len(document_base.documents)}")
+ 
+        results = embedding_collection.search(
+            data=[attribute_embedding], 
+            anns_field="embedding_value", 
+            param=self._search_params,
+            limit=16384,
+            expr= None,
+            output_fields=['id','document_id'],
+            consistency_level="Strong"
+        )
 
-        for i in document_base.documents:
+        print(f"Results insgesamt: {results[0]}")
+
+        for i in results[0]:
+            #print(f"Result[i]: f{i}")
             
-            results = embedding_collection.search(
-                data=[attribute_embedding], 
-                anns_field="embedding_value", 
-                param=self._search_params,
-                limit=1,
-                expr= f"document_id == \"{i.name}\"",
-                output_fields=['id'],
-                consistency_level="Strong"
-            )
+            current_document = document_base.documents[i.entity.get('document_id')]
+            if not current_document in remaining_documents:
+                current_nugget = i.id
 
-            logger.info(f"results for document: {i.name}: Result: {results}")
-            logger.info(f"results: {results[0].ids} distance: {results[0].distances} ")
-            if results[0].ids: 
-                i[CurrentMatchIndexSignal] = CurrentMatchIndexSignal(results[0][0].id) #sicherstellen, dass ; nicht im document name verwendet wird
-                i.nuggets[results[0][0].id][CachedDistanceSignal] = CachedDistanceSignal(results[0][0].distance)
-                remaining_documents.append(i)
-                logger.info(f"Appended nugget: {results[0].ids}; To document {i.name} cached index: {i[CurrentMatchIndexSignal]}; Cached distance {i.nuggets[i[CurrentMatchIndexSignal]][CachedDistanceSignal]}")
-       
+                current_document[CurrentMatchIndexSignal] = CurrentMatchIndexSignal(current_nugget)
+                print(f"Computed: {i.distance}")
+                current_document.nuggets[current_nugget][CachedDistanceSignal] = CachedDistanceSignal(i.distance)
+                print(f"Saved: {current_document.nuggets[current_nugget][CachedDistanceSignal]}")
+                remaining_documents.append(current_document)
+                #print(f"Appended nugget: {current_nugget}; To document {current_document.name} cached index: {current_document[CurrentMatchIndexSignal]}; Cached distance {current_document.nuggets[current_nugget][CachedDistanceSignal]}")
+                logger.info(f"Appended nugget: {current_nugget}; To document {current_document.name} cached index: {current_document[CurrentMatchIndexSignal]}; Cached distance {current_document.nuggets[current_nugget][CachedDistanceSignal]}")
+            else:
+                #print(f"Skip Nugget {i.id}")
+                continue
+        print(f"Insgesamt: {len(remaining_documents)}")
+
         return remaining_documents
     
-    def updating_distances_documents(self, target_embedding: List[float], documents: List[Document]):
+    def updating_distances_documents(self, target_embedding: List[float], documents: List[Document], document_base : DocumentBase):
         embedding_collection = Collection('Embeddings')
+        doc_indexes = [doc.get_index() for doc in documents]
+        processed = [] 
 
-        for i in documents:
+        #Compute the distance between the embeddings of the attribute and the embeddings of the nuggets
+        results = embedding_collection.search(
+            data=[target_embedding], 
+            anns_field="embedding_value", 
+            param=self._search_params,
+            limit=16384,
+            expr= f"document_id in {str(doc_indexes)}",
+            output_fields=['id','document_id'],
+            consistency_level="Strong"
+        )
 
-            #Compute the distance between the embeddings of the attribute and the embeddings of the nuggets
-            results = embedding_collection.search(
-                data=[target_embedding], 
-                anns_field="embedding_value", 
-                param=self._search_params,
-                limit=1,
-                expr= f"document_id == \"{i.name}\"",
-                output_fields=['id'],
-                consistency_level="Strong"
+        #print(f"Results[0]: {results[0]}")
+
+        for i in results[0]:
+            current_document = document_base.documents[i.entity.get('document_id')]
+            #print(f"Current Document: {current_document}")
+
+            if not current_document in processed:
+                #print(F"Not already processed")
+                current_nugget = i.id
+                #print(f"Current Nugget: {current_nugget}")
+                if 'CurrentMatchIndexSignal' in current_document.signals:
+                    #print(f"Document: {current_document.name} contains CurrentMatchIndex: {current_document[CurrentMatchIndexSignal]}")
+                    if i.distance < current_document.nuggets[current_document[CurrentMatchIndexSignal]][CachedDistanceSignal]:
+                        #print(f"Neue Distanz: {i.distance} kleiner als alte Distanz: {current_document.nuggets[current_document[CurrentMatchIndexSignal]][CachedDistanceSignal]}")
+                        current_document[CurrentMatchIndexSignal] = CurrentMatchIndexSignal(current_nugget)
+                        current_document.nuggets[current_nugget][CachedDistanceSignal] = CachedDistanceSignal(i.distance)
+                        #print(f"Neuer Currentindex: {current_document[CurrentMatchIndexSignal]}, Neue Distanz: {current_document.nuggets[current_nugget][CachedDistanceSignal]}")
+                    else:
+                        #print(f"Neue Distanz: {i.distance} größer als alte Distanz: {current_document.nuggets[current_document[CurrentMatchIndexSignal]][CachedDistanceSignal]}")
+                        continue
+                else:
+                    #print("CurrentIndex noch nicht drin")
+                    current_document[CurrentMatchIndexSignal] = CurrentMatchIndexSignal(current_nugget)
+                    current_document.nuggets[current_nugget][CachedDistanceSignal] = CachedDistanceSignal(i.distance)
+                    #print(f"Neuer Current Index: { current_document[CurrentMatchIndexSignal]}; Neue Cached Distanz: {current_document.nuggets[current_nugget][CachedDistanceSignal]}")
+            else:
+                #print(f"Already processed!")
+                continue
+
+    def regenerate_index(self, index_params, collection_name = "Embeddings"):
+        collection = Collection(collection_name)
+        collection.drop_index()
+        collection.create_index(
+            field_name='embedding_value', 
+            index_params=index_params
             )
-
-            if results[0].ids:
-                if i.nuggets[i[CurrentMatchIndexSignal]][CachedDistanceSignal] > results[0][0].distance:
-                    i[CurrentMatchIndexSignal] = CurrentMatchIndexSignal(results[0][0].id)
-                    i.nuggets[results[0][0].id][CachedDistanceSignal] = CachedDistanceSignal(results[0][0].distance)
 
 def generate_and_store_embedding(input_path):
     
@@ -230,16 +268,19 @@ def generate_and_store_embedding(input_path):
         
         # preprocess the data
         default_pipeline = Pipeline([
-                            StanzaNERExtractor(),
-                            SpacyNERExtractor("SpacyEnCoreWebLg"),
-                            ContextSentenceCacher(),
-                            CopyNormalizer(),
-                            OntoNotesLabelParaphraser(),
-                            SplitAttributeNameLabelParaphraser(do_lowercase=True, splitters=[" ", "_"]),
-                            SBERTTextEmbedder("SBERTBertLargeNliMeanTokensResource"),
-                            SBERTExamplesEmbedder("SBERTBertLargeNliMeanTokensResource")
+                StanzaNERExtractor(),
+                SpacyNERExtractor("SpacyEnCoreWebLg"),
+                ContextSentenceCacher(),
+                CopyNormalizer(),
+                OntoNotesLabelParaphraser(),
+                SplitAttributeNameLabelParaphraser(do_lowercase=True, splitters=[" ", "_"]),
+                SBERTLabelEmbedder("SBERTBertLargeNliMeanTokensResource"),
+                SBERTTextEmbedder("SBERTBertLargeNliMeanTokensResource"),
+                BERTContextSentenceEmbedder("BertLargeCasedResource"),
+                BERTContextSentenceEmbedder("BertLargeCasedResource"),
+                CombineEmbedder()
             ])
-        #BERTContextSentenceEmbedder("BertLargeCasedResource"),
+
 
         statistics = Statistics(do_collect=True)
         statistics["preprocessing"]["config"] = default_pipeline.to_config()
@@ -267,10 +308,197 @@ def generate_and_store_embedding(input_path):
         with open("corona.bson", "wb") as file:
             file.write(document_base.to_bson())
 
+def compute_distances(
+            xs,
+            ys
+    ) -> np.ndarray:
 
+        assert len(xs) > 0 and len(ys) > 0, "Cannot compute distances for an empty collection!"
+        if not isinstance(xs, list):
+            xs = list(xs)
+        if not isinstance(ys, list):
+            ys = list(xs)
+
+        signal_identifiers: list[str] = [
+            LabelEmbeddingSignal.identifier,
+            TextEmbeddingSignal.identifier,
+            ContextSentenceEmbeddingSignal.identifier,
+            RelativePositionSignal.identifier,
+            POSTagsSignal.identifier
+        ]
+
+        # check that all xs and all ys contain the same signals
+        xs_is_present: np.ndarray = np.zeros(5)
+        for idx in range(5):
+            if signal_identifiers[idx] in xs[0].signals.keys():
+                xs_is_present[idx] = 1
+        for x in xs:
+            for idx in range(5):
+                    if (
+                            xs_is_present[idx] == 1
+                            and signal_identifiers[idx] not in x.signals.keys()
+                            or xs_is_present[idx] == 0
+                            and signal_identifiers[idx] in x.signals.keys()
+                    ):
+                        assert False, "All xs must have the same signals!"
+
+        ys_is_present: np.ndarray = np.zeros(5)
+        for idx in range(5):
+            if signal_identifiers[idx] in ys[0].signals.keys():
+                ys_is_present[idx] = 1
+        for y in ys:
+            for idx in range(5):
+                    if (
+                            ys_is_present[idx] == 1
+                            and signal_identifiers[idx] not in y.signals.keys()
+                            or ys_is_present[idx] == 0
+                            and signal_identifiers[idx] in y.signals.keys()
+                    ):
+                        assert False, "All ys must have the same signals!"
+
+        # compute distances signal by signal
+        start_time = time.time()
+        amount_distances=0
+        distances: np.ndarray = np.zeros((len(xs), len(ys)))
+        for idx in range(3):
+            if xs_is_present[idx] == 1 and ys_is_present[idx] == 1:
+                x_embeddings: np.ndarray = np.array([x[signal_identifiers[idx]] for x in xs])
+                y_embeddings: np.ndarray = np.array([y[signal_identifiers[idx]] for y in ys])
+                tmp: np.ndarray = cosine_distances(x_embeddings, y_embeddings)
+                distances = np.add(distances, tmp)
+                amount_distances += len(tmp)
+
+        if xs_is_present[3] == 1 and ys_is_present[3] == 1:
+            x_positions: np.ndarray = np.array([x[signal_identifiers[3]] for x in xs])
+            y_positions: np.ndarray = np.array([y[signal_identifiers[3]] for y in ys])
+            tmp: np.ndarray = np.zeros((len(x_positions), len(y_positions)))
+            for x_ix, x_value in enumerate(x_positions):
+                for y_ix, y_value in enumerate(y_positions):
+                    tmp[x_ix, y_ix] = np.abs(x_value - y_value)
+            distances = np.add(distances, tmp)
+            amount_distances += len(tmp)
+
+        if xs_is_present[4] == 1 and ys_is_present[4] == 1:
+            x_values: list[list[str]] = [x[signal_identifiers[4]] for x in xs]
+            y_values: list[list[str]] = [y[signal_identifiers[4]] for y in ys]
+            tmp: np.ndarray = np.ones((len(x_values), len(y_values)))
+            for x_ix, x_value in enumerate(x_values):
+                for y_ix, y_value in enumerate(y_values):
+                    if x_value == y_value:
+                        tmp[x_ix, y_ix] = 0
+            distances = np.add(distances, tmp)
+            amount_distances += len(tmp)
+
+        print(f"Processed distances without VDB: {amount_distances}")
+        actually_present: np.ndarray = xs_is_present * ys_is_present
+        if np.sum(actually_present) == 0:
+            print("Without VDB--- %s seconds ---" % (time.time() - start_time))
+            return np.ones_like(distances)
+        else:
+            print("Without VDB:--- %s seconds ---" % (time.time() - start_time))
+            return np.divide(distances, np.sum(actually_present))
+
+
+def generate_new_index(index_params):
+    with vectordb() as vb:
+        vb.regenerate_index(index_params)
+
+def compute_embedding_distances(path = "corona.bson", rounds= 1, nprobe_max= 500, max_limit=2001 ):    
+    
+    # pr = cProfile.Profile()
+    
+    
+    with open(path, "rb") as file:
+        document_base = DocumentBase.from_bson(file.read())
+
+        if not document_base.validate_consistency():
+            logger.error("Document base is inconsistent!")
+            return
+                
+        with vectordb() as vb:
+            # pr.enable()
+            
+            output = {}
+            start_time_ = time.time()
+            embedding_collection = Collection("Embeddings")
+            embedding_collection.load()
+            print("Load Collection:--- %s seconds ---" % (time.time() - start_time_))
+            print(f"Embedding collection has {embedding_collection.num_entities} embeddings.")
+            #dist_collection = Collection("Distances")
+            #dist_collection.load()
+            distances={}
+            
+            for nprobe in range(20,nprobe_max, 20):
+                search_params = {"metric_type": "L2", "params": {"nprobe": nprobe}, "offset": 0}
+                output[nprobe] = {}
+                for limit in range(500, max_limit, 500):
+                    time_sum = 0
+                    amount_distances = 0
+                    for _ in range(rounds):
+                        
+                        #for every attribute in the document base
+                        start_time = time.time()
+                        for attribute in document_base.attributes:
+                            distances[attribute.name]={}
+                            #for every embedding signal in the attribute
+                            #for i in [signal.identifier for signal in attribute.signals.values() if signal.identifier in embeddding_signals]:
+
+                            embedding_vector = []
+                            for embedding_name in vb._embedding_identifier:
+                                embedding_vector_data = attribute.signals.get(embedding_name, None)
+                                if embedding_vector_data is not None:
+                                    embedding_value = embedding_vector_data.value
+                                    
+                                else:
+                                    embedding_value = np.zeros(1024)
+                                embedding_vector.extend(embedding_value)
+
+                            #Compute the distance between the embeddings of the attribute and the embeddings of the nuggets
+                            results = embedding_collection.search(
+                                data = [embedding_vector],
+                                anns_field="embedding_value",
+                                param=search_params,
+                                limit=limit
+                            )
+                            #print(f"Attribute: {attribute.name}; Type of embedding: {i}; Amount distance values: {len(results[0].distances)}")
+                            amount_distances += len(results[0].distances)   
+                            test = results[0].distances
+                            distances[attribute.name][0]= dict(zip(results[0].ids, results[0].distances))
+                            time_sum += time.time() - start_time
+                    avg_time = time_sum / rounds
+                    avg_dist = amount_distances / rounds
+                    output[nprobe][limit] = {
+                            "time":avg_time,
+                            "amount_distances":avg_dist
+                        }
+                        
+                print(f"NProbe {nprobe}/1024")
+                print(time.time() - start_time_)
+                
+            embedding_collection.release()
+
+    print("VDB:--- %s seconds ---" % (time.time() - start_time))
+    distance_mat = compute_distances(document_base.nuggets, document_base.attributes)
+    print(f"Processed distances VDB: {amount_distances}")
+    print(f"Processed distances without VDB: {distance_mat.size}")
+    return output
+
+
+def compute_embedding_distances_withoutVDB(path = "corona.bson"):
+    with open(path, "rb") as file:
+        document_base = DocumentBase.from_bson(file.read())
+
+        if not document_base.validate_consistency():
+            logger.error("Document base is inconsistent!")
+            return
+
+        start_time = time.time()
+        distance_mat = compute_distances(document_base.nuggets, document_base.attributes)
+    
+    return time.time() - start_time ,distance_mat.size
 #generate_and_store_embedding('C:\\Users\\Pascal\\Desktop\\WannaDB\\lab23_wannadb_scale-up\\datasets\\corona\\raw-documents')
 
     
 
         
-
+#print(compute_embedding_distances_withoutVDB())

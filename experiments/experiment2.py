@@ -36,6 +36,8 @@ from experiments.baselines.baseline_bart_seq2seq import calculate_f1_scores
 from experiments.util import consider_overlap_as_match
 from wannadb.data.vector_database import vectordb
 from wannadb.data.signals import UserProvidedExamplesSignal, LabelEmbeddingSignal, TextEmbeddingSignal, ContextSentenceEmbeddingSignal
+import cProfile, pstats, io
+from pstats import SortKey
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger()
@@ -151,24 +153,12 @@ if __name__ == "__main__":
         ################################################################################################################
         # Load embeddings into vector database
         ################################################################################################################
-
-        print(f"Amount of nuggets: {len(document_base.nuggets)}")
-        for i in document_base.nuggets:
-            if not 'LabelEmbeddingSignal' in i.signals:
-                print(f"Nugget {i} {i.signals}, doesnt contain LabelEmbeddingSignal")
-                break
-            if not 'TextEmbeddingSignal' in i.signals:
-                print(f"Nugget {i} {i.signals}, doesnt contain TextEmbeddingSignal")
-                break
-            if not 'ContextSentenceEmbeddingSignal' in i.signals:
-                print(f"Nugget {i} {i.signals}, doesnt contain ContextSentenceEmbeddingSignal")
-                break
-        
+        '''
         with vectordb() as vdb:
           vdb.extract_nuggets(document_base)
           collection = Collection("Embeddings")
           print(f"Amount of nuggets loaded into vector db: {collection.num_entities}")
-        
+        '''
 
         ################################################################################################################
         # matching phase
@@ -183,82 +173,96 @@ if __name__ == "__main__":
                         832096,
                         962731, 345784, 317557, 696622, 675696, 467273, 475463, 540128]
 
-        for run, random_seed in enumerate(random_seeds):
-            print("\n\n\nExecuting run {}.".format(run + 1))
+        pr = cProfile.Profile()
+        pr.enable()
 
-            # load the document base
-            path = os.path.join(os.path.dirname(__file__), "..", "cache", f"exp-2-{dataset.NAME}-preprocessed.bson")
-            with open(path, "rb") as file:
-                document_base = DocumentBase.from_bson(file.read())
+        with vectordb() as vb:
+            collection = Collection("Embeddings")
+            collection.load()
+            for run, random_seed in enumerate(random_seeds):
+                print("\n\n\nExecuting run {}.".format(run + 1))
 
-            wannadb_pipeline = Pipeline(
-                [
+                # load the document base
+                path = os.path.join(os.path.dirname(__file__), "..", "cache", f"exp-2-{dataset.NAME}-preprocessed.bson")
+                with open(path, "rb") as file:
+                    document_base = DocumentBase.from_bson(file.read())
+
+                collection = Collection("Embeddings")
+                collection.load()
+
+                wannadb_pipeline = Pipeline(
+                    [
+                        ContextSentenceCacher(),
+                        RankingBasedMatcherVDB(
+                            max_num_feedback=10,
+                            len_ranked_list=10,
+                            max_distance=0.2,
+                            num_random_docs=1,
+                            sampling_mode="AT_MAX_DISTANCE_THRESHOLD",
+                            vector_database = vb,
+                            adjust_threshold=True,
+                            embedding_identifier=[
+                                            "LabelEmbeddingSignal",
+                                            "TextEmbeddingSignal",
+                                            "ContextSentenceEmbeddingSignal"
+
+                            ],
+
+                            nugget_pipeline=Pipeline(
+                                [
+                                    ContextSentenceCacher(),
+                                    CopyNormalizer(),
+                                    OntoNotesLabelParaphraser(),
+                                    SplitAttributeNameLabelParaphraser(do_lowercase=True, splitters=[" ", "_"]),
+                                    SBERTTextEmbedder("SBERTBertLargeNliMeanTokensResource"),
+                                    CombineEmbedder()
+                                ]
+                            )
+                        )
+                    ]
+                )
+
+                '''
+                wannadb_pipeline = Pipeline([
                     ContextSentenceCacher(),
-                    RankingBasedMatcherVDB(
+                    RankingBasedMatcher(
+                        distance=SignalsMeanDistance(
+                            signal_identifiers=[
+                                "LabelEmbeddingSignal",
+                                "TextEmbeddingSignal",
+                                "ContextSentenceEmbeddingSignal"
+                            ]
+                        ),
                         max_num_feedback=10,
                         len_ranked_list=10,
-                        max_distance=0.2,
+                        max_distance=0.2,  
                         num_random_docs=1,
-                        sampling_mode="AT_MAX_DISTANCE_THRESHOLD",
+                        sampling_mode="AT_MAX_DISTANCE_THRESHOLD",  
                         adjust_threshold=True,
-                        embedding_identifier=[
-                                         "LabelEmbeddingSignal",
-                                          "TextEmbeddingSignal",
-                                          "ContextSentenceEmbeddingSignal"
-
-                        ],
                         nugget_pipeline=Pipeline(
-                            [
-                                ContextSentenceCacher(),
-                                CopyNormalizer(),
-                                OntoNotesLabelParaphraser(),
-                                SplitAttributeNameLabelParaphraser(do_lowercase=True, splitters=[" ", "_"]),
-                                SBERTTextEmbedder("SBERTBertLargeNliMeanTokensResource"),
-                                CombineEmbedder()
-                            ]
-                        )
+                                [
+                                    ContextSentenceCacher(),
+                                    CopyNormalizer(),
+                                    OntoNotesLabelParaphraser(),
+                                    SplitAttributeNameLabelParaphraser(do_lowercase=True, splitters=[" ", "_"]),
+                                    SBERTTextEmbedder("SBERTBertLargeNliMeanTokensResource"),
+                                ]
+                            )
                     )
-                ]
-            )
+                ])
+                '''
+                
 
-            '''
-            wannadb_pipeline = Pipeline([
-                ContextSentenceCacher(),
-                RankingBasedMatcher(
-                    distance=SignalsMeanDistance(
-                        signal_identifiers=[
-                            "LabelEmbeddingSignal",
-                            "TextEmbeddingSignal",
-                            "ContextSentenceEmbeddingSignal"
-                        ]
-                    ),
-                    max_num_feedback=10,
-                    len_ranked_list=10,
-                    max_distance=0.2,  
-                    num_random_docs=1,
-                    sampling_mode="AT_MAX_DISTANCE_THRESHOLD",  
-                    adjust_threshold=True,
-                    nugget_pipeline=Pipeline(
-                            [
-                                ContextSentenceCacher(),
-                                CopyNormalizer(),
-                                OntoNotesLabelParaphraser(),
-                                SplitAttributeNameLabelParaphraser(do_lowercase=True, splitters=[" ", "_"]),
-                                SBERTTextEmbedder("SBERTBertLargeNliMeanTokensResource"),
-                            ]
-                        )
-                )
-            ])
-            '''
+                statistics["matching"]["config"] = wannadb_pipeline.to_config()
 
-            statistics["matching"]["config"] = wannadb_pipeline.to_config()
+                # set the random seed
+                random.seed(random_seed)
 
-            # set the random seed
-            random.seed(random_seed)
+                logger.setLevel(logging.WARN)
 
-            logger.setLevel(logging.WARN)
 
-            wannadb_pipeline(
+
+                wannadb_pipeline(
                 document_base=document_base,
                 interaction_callback=AutomaticRandomRankingBasedMatchingFeedback(
                     documents,
@@ -266,9 +270,10 @@ if __name__ == "__main__":
                 ),
                 status_callback=EmptyStatusCallback(),
                 statistics=statistics["matching"]["runs"][str(run)]
-            )
+                )
 
-            logger.setLevel(logging.INFO)
+
+                logger.setLevel(logging.INFO)
 
             # evaluate the matching process
             for attribute, attribute_name in zip(dataset.ATTRIBUTES, user_attribute_names):
@@ -315,6 +320,15 @@ if __name__ == "__main__":
                     statistics["matching"]["runs"][str(run)]["results"][attribute]["f1_score"])
             results = statistics["matching"]["runs"][str(run)]["results"]["macro_f1"] = np.mean(attribute_f1_scores)
             print("F1 Score: ", np.mean(attribute_f1_scores))
+
+        pr.disable()
+        s = io.StringIO()
+        sortby = SortKey.CUMULATIVE
+        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+        ps.print_stats()
+        print(s.getvalue())
+        with open('automatch_withoutvdb.txt', 'w+') as f:
+            f.write(s.getvalue()) 
 
         # compute the results as the median
         for attribute in dataset.ATTRIBUTES:

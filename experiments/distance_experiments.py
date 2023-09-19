@@ -28,6 +28,7 @@ from wannadb.resources import ResourceManager
 from wannadb.statistics import Statistics
 from wannadb.status import EmptyStatusCallback
 from wannadb.matching.distance import SignalsMeanDistance
+
 #import datasets.corona.corona as dataset
 from wannadb.data.signals import CachedDistanceSignal
 from wannadb.data.signals import CurrentMatchIndexSignal
@@ -36,7 +37,6 @@ from pstats import SortKey
 
 
 def new_compute_embedding_distances(path = "C:/Users/Pascal/Desktop\WannaDB/lab23_wannadb_scale-up/cache/exp-2-corona-preprocessed.bson"): 
-    pr = cProfile.Profile()
     #Experiment 1 - Vector database for CurrentMatchingIndex
 
     with open(path, "rb") as file:
@@ -49,14 +49,13 @@ def new_compute_embedding_distances(path = "C:/Users/Pascal/Desktop\WannaDB/lab2
         with vectordb() as vb:
             #times_per_attribute = []
 
-            vb.extract_nuggets(document_base)
+            #vb.extract_nuggets(document_base)
+            embedding_collection = Collection("Embeddings")
 
             start_time = time.time()
-            embedding_collection = Collection("Embeddings")
             embedding_collection.load()
             print(f"Embedding collection has {embedding_collection.num_entities} embeddings.")
             print("Load VDB:--- %s seconds ---" % (time.time() - start_time))
-            remaining_documents: List[Tuple(Document, float)] = []
 
             attribute = document_base.attributes[0]
             signals = ['LabelEmbeddingSignal', 'TextEmbeddingSignal', 'ContextSentenceEmbeddingSignal']
@@ -72,48 +71,12 @@ def new_compute_embedding_distances(path = "C:/Users/Pascal/Desktop\WannaDB/lab2
             if len(embedding_list) > 0:
                 combined_embedding =np.concatenate(embedding_list)
 
+            result_docs = vb.compute_inital_distances(attribute_embedding= combined_embedding, document_base=document_base)
+            for i in result_docs:
+                print(f"Nugget: {i[CurrentMatchIndexSignal]} Document: {i.name} Distance: {i.nuggets[i[CurrentMatchIndexSignal]][CachedDistanceSignal]}")
+            embedding_collection.release()        
 
-            remaining_documents: List[Document] = []
-            embedding_collection = Collection('Embeddings')
 
-            search_params = {
-            "metric_type": "L2", 
-            "offset": 0, 
-            "ignore_growing": False, 
-            "params": {"nprobe": 100}
-            }
-
-            pr.enable()
-
-                    
-            results = embedding_collection.search(
-                data=[combined_embedding], 
-                anns_field="embedding_value", 
-                param=search_params,
-                limit=100,
-                expr= None,
-                output_fields=['id'],
-                consistency_level="Strong"
-            )
-            '''
-                if results[0].ids: 
-                    i[CurrentMatchIndexSignal] = CurrentMatchIndexSignal(results[0][0].id) 
-                    i.nuggets[results[0][0].id][CachedDistanceSignal] = CachedDistanceSignal(results[0][0].distance)
-                    remaining_documents.append(i)
-            '''
-            embedding_collection.load()
-                    
-    print("VDB intial distances:--- %s seconds ---" % (time.time() - start_time))
-    pr.disable()
-    s = io.StringIO()
-    sortby = SortKey.CUMULATIVE
-    ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-    ps.print_stats()
-    print(s.getvalue())
-    with open('vdb_current_match.txt', 'w+') as f:
-        f.write(s.getvalue())
-
-    
     start_time = time.time()
     attribute = document_base.attributes[0]
         #time_per_attribute = time.time()

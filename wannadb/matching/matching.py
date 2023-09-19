@@ -485,6 +485,7 @@ class RankingBasedMatcherVDB(BaseMatcher):
             max_distance: float,
             num_random_docs: int,
             sampling_mode: str,
+            vector_database: vectordb,
             adjust_threshold: bool,
             nugget_pipeline: Pipeline,
             embedding_identifier: List[str],
@@ -510,6 +511,7 @@ class RankingBasedMatcherVDB(BaseMatcher):
         self._max_distance: float = max_distance
         self._num_random_docs: int = num_random_docs
         self._sampling_mode: str = sampling_mode
+        self._vector_database: vectordb = vector_database
         self._adjust_threshold: bool = adjust_threshold
         self._nugget_pipeline: Pipeline = nugget_pipeline
         self._embedding_identifier: List[str] = embedding_identifier
@@ -558,137 +560,229 @@ class RankingBasedMatcherVDB(BaseMatcher):
                 logger.info(f"Attribute '{attribute.name}' has already been matched before.")
                 continue
 
-            with vectordb() as vdb:
-                # compute initial distances as distances to label
-                logger.info("Compute initial distances and initialize documents.")
-                tik: float = time.time()
+            # compute initial distances as distances to label
+            logger.info("Compute initial distances and initialize documents.")
+            tik: float = time.time()
 
-                signals = ['LabelEmbeddingSignal', 'TextEmbeddingSignal', 'ContextSentenceEmbeddingSignal']
+            signals = ['LabelEmbeddingSignal', 'TextEmbeddingSignal', 'ContextSentenceEmbeddingSignal']
 
-                embedding_list = []
-                for signal in signals:
-                    if signal in self._embedding_identifier and signal in attribute.signals:
-                        embedding_list.append(attribute[signal])
-                        logger.info(f"{signal} for attribute: {attribute[signal]}")
-                    else:
-                        embedding_list.append(np.zeros(1024))
+            embedding_list = []
+            for signal in signals:
+                if signal in self._embedding_identifier and signal in attribute.signals:
+                    embedding_list.append(attribute[signal])
+                    logger.info(f"{signal} for attribute: {attribute[signal]}")
+                else:
+                    embedding_list.append(np.zeros(1024))
 
 
-                if len(embedding_list) > 0:
-                    combined_embedding =np.concatenate(embedding_list)
-                    logger.info(f"Combined embedding: {combined_embedding}")
+            if len(embedding_list) > 0:
+                combined_embedding =np.concatenate(embedding_list)
+                logger.info(f"Combined embedding: {combined_embedding}")
 
+
+            remaining_documents = self._vector_database.compute_inital_distances(attribute_embedding= combined_embedding, document_base=document_base)
+            logger.info(f"Length remaining: {len(remaining_documents)}")
+
+            tak: float = time.time()
+            logger.info(f"Computed initial distances and initialized documents in {tak - tik} seconds.")
+
+            # iterative user interactions
+            logger.info("Execute interactive matching.")
+            tik: float = time.time()
+            num_feedback: int = 0
+            continue_matching: bool = True
+            while continue_matching and num_feedback < self._max_num_feedback and remaining_documents != []:
+                remaining_documents = list(sorted(
+                    remaining_documents,
+                    key=lambda x: x.nuggets[x[CurrentMatchIndexSignal]][CachedDistanceSignal],
+                    reverse=True
+                ))
+
+                if self._sampling_mode == "MOST_UNCERTAIN":
+                    selected_documents: List[Document] = remaining_documents[:self._len_ranked_list]
+
+                    num_nuggets_above: int = 0
+                    num_nuggets_below: int = len(remaining_documents) - self._len_ranked_list
+                elif self._sampling_mode == "MOST_UNCERTAIN_WITH_RANDOMS":
+                    # sample random documents and move them to the front of the ranked list
+                    random_documents: List[Document] = []
+                    for i in range(self._num_random_docs):
+                        if remaining_documents != []:
+                            random_document: Document = random.choice(remaining_documents)
+                            random_documents.append(random_document)
+                            remaining_documents.remove(random_document)
+
+                    remaining_documents: List[Document] = random_documents + remaining_documents
+                    selected_documents = remaining_documents[:self._len_ranked_list]
+
+                    num_nuggets_above: int = 0
+                    num_nuggets_below: int = len(remaining_documents) - self._len_ranked_list
+                elif self._sampling_mode == "AT_MAX_DISTANCE_THRESHOLD":   
+                    ix_lower: int = 0
+                    while ix_lower < len(remaining_documents) and \
+                        remaining_documents[ix_lower].nuggets[
+                            remaining_documents[ix_lower][CurrentMatchIndexSignal]][
+                            CachedDistanceSignal] > self._max_distance:
+                        ix_lower += 1
+
+                    higher_left: int = max(0, ix_lower - self._len_ranked_list // 2)
+                    higher_right: int = ix_lower
+                    higher_num: int = higher_right - higher_left
+                    lower_left: int = ix_lower
+                    lower_right: int = min(len(remaining_documents), ix_lower + self._len_ranked_list // 2)
+                    lower_num: int = lower_right - lower_left
+
+                    if lower_num < self._len_ranked_list // 2:
+                        higher_left = max(0, higher_left - (self._len_ranked_list // 2 - lower_num))
+                    elif higher_num < self._len_ranked_list // 2:
+                        lower_right = min(len(remaining_documents),
+                                        lower_right + (self._len_ranked_list // 2 - higher_num))
+
+                    selected_documents: List[Tuple[Document, float]] = remaining_documents[higher_left:lower_right]
+
+                    num_nuggets_above: int = higher_left
+                    num_nuggets_below: int = len(remaining_documents) - lower_right
+                else:
+                    logger.error(f"Unknown sampling mode '{self._sampling_mode}'!")
+                    assert False, f"Unknown sampling mode '{self._sampling_mode}'!"
+
+
+                # present documents to the user for feedback   
+                feedback_nuggets, feedback_nuggets_old_cached_distances = zip(
+                *(
+                    (feedback_nugget, feedback_nugget[CachedDistanceSignal]) for feedback_nugget in
+                    (
+                        doc.nuggets[doc[CurrentMatchIndexSignal]] for doc in selected_documents)
+                    )
+                )
                 
-                logger.info("Compute intialllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllll")
 
-                remaining_documents = vdb.compute_inital_distances(attribute_embedding= combined_embedding, document_base=document_base)
-                logger.info(f"Length remaining: {len(remaining_documents)}")
+                num_feedback += 1
+                statistics[attribute.name]["num_feedback"] += 1
+                t0 = time.time()
+                feedback_result: Dict[str, Any] = interaction_callback(
+                    self.identifier,
+                    {
+                        "max-distance": self._max_distance,
+                        "nuggets": feedback_nuggets,
+                        "attribute": attribute,
+                        "num-feedback": num_feedback,
+                        "num-nuggets-above": num_nuggets_above,
+                        "num-nuggets-below": num_nuggets_below
+                    }
+                )
 
-                tak: float = time.time()
-                logger.info(f"Computed initial distances and initialized documents in {tak - tik} seconds.")
+                t1 = time.time()
+                statistics[attribute.name]["feedback_durations"].append(t1 - t0)
 
-                # iterative user interactions
-                logger.info("Execute interactive matching.")
-                tik: float = time.time()
-                num_feedback: int = 0
-                continue_matching: bool = True
-                while continue_matching and num_feedback < self._max_num_feedback and remaining_documents != []:
-                    remaining_documents = list(sorted(
-                        remaining_documents,
-                        key=lambda x: x.nuggets[x[CurrentMatchIndexSignal]][CachedDistanceSignal],
-                        reverse=True
-                    ))
+                if feedback_result["message"] == "stop-interactive-matching":
+                    statistics[attribute.name]["stopped_matching_by_hand"] = True
+                    continue_matching = False
+                elif feedback_result["message"] == "no-match-in-document":
+                    statistics[attribute.name]["num_no_match_in_document"] += 1
+                    feedback_result["nugget"].document.attribute_mappings[attribute.name] = []
+                    remaining_documents.remove(feedback_result["nugget"].document)
 
-                    if self._sampling_mode == "MOST_UNCERTAIN":
-                        selected_documents: List[Document] = remaining_documents[:self._len_ranked_list]
+                    if self._adjust_threshold:
+                        # threshold adjustment: if the given nugget's cached distance is smaller than the threshold,
+                        # update the threshold to the minimum cached distance of all nuggets that are above in the
+                        # ranked list, but were below the threshold before
+                        if feedback_result["nugget"][CachedDistanceSignal] < self._max_distance:
+                            nugget_ix = -1
+                            for ix, nugget in enumerate(feedback_nuggets):
+                                if nugget is feedback_result["nugget"]:
+                                    nugget_ix = ix
+                                    break
+                            assert nugget_ix != -1
 
-                        num_nuggets_above: int = 0
-                        num_nuggets_below: int = len(remaining_documents) - self._len_ranked_list
-                    elif self._sampling_mode == "MOST_UNCERTAIN_WITH_RANDOMS":
-                        # sample random documents and move them to the front of the ranked list
-                        random_documents: List[Document] = []
-                        for i in range(self._num_random_docs):
-                            if remaining_documents != []:
-                                random_document: Document = random.choice(remaining_documents)
-                                random_documents.append(random_document)
-                                remaining_documents.remove(random_document)
+                            if nugget_ix > 0:
+                                min_dist = 1
+                                for ix in range(nugget_ix):
+                                    if feedback_nuggets_old_cached_distances[ix] < self._max_distance:
+                                        min_dist = min(min_dist, feedback_nuggets[ix][CachedDistanceSignal])
+                                if min_dist < self._max_distance:
+                                    self._max_distance = min_dist
+                                    statistics[attribute.name]["max_distances"].append(min_dist)
+                                    logger.info(f"NO MATCH IN DOCUMENT: Decreased the maximum distance to "
+                                                f"{self._max_distance}.")
+                                else:
+                                    logger.info("NO MATCH IN DOCUMENT: Did not change the maximum distance since it "
+                                                "would not be decreased.")
+                            else:
+                                logger.info("NO MATCH IN DOCUMENT: Did not change the maximum distance since the "
+                                            "document is at the top of the list.")
+                        else:
+                            logger.info("NO MATCH IN DOCUMENT: Did not change the maximum distance since the document"
+                                        "was already above the old threshold.")
 
-                        remaining_documents: List[Document] = random_documents + remaining_documents
-                        selected_documents = remaining_documents[:self._len_ranked_list]
+                elif feedback_result["message"] == "custom-match":
+                    statistics[attribute.name]["num_custom_match"] += 1
 
-                        num_nuggets_above: int = 0
-                        num_nuggets_below: int = len(remaining_documents) - self._len_ranked_list
-                    elif self._sampling_mode == "AT_MAX_DISTANCE_THRESHOLD":   
-                        ix_lower: int = 0
-                        while ix_lower < len(remaining_documents) and \
-                            remaining_documents[ix_lower].nuggets[
-                                remaining_documents[ix_lower][CurrentMatchIndexSignal]][
-                                CachedDistanceSignal] > self._max_distance:
-                            ix_lower += 1
+                    def run_nugget_pipeline(nuggets):
+                        # run the nugget pipeline for this nugget
+                        dummy_documents = []
+                        for n in nuggets:
+                            dummy_document = Document("dummy", n.document.text)
+                            dummy_document[SentenceStartCharsSignal] = n.document[SentenceStartCharsSignal]
+                            dummy_document.nuggets.append(n)
+                            # TODO: think about other signals that might be required
+                            dummy_documents.append(dummy_document)
 
-                        higher_left: int = max(0, ix_lower - self._len_ranked_list // 2)
-                        higher_right: int = ix_lower
-                        higher_num: int = higher_right - higher_left
-                        lower_left: int = ix_lower
-                        lower_right: int = min(len(remaining_documents), ix_lower + self._len_ranked_list // 2)
-                        lower_num: int = lower_right - lower_left
+                        dummy_document_base = DocumentBase(dummy_documents, [])
+                        self._nugget_pipeline(dummy_document_base, interaction_callback, status_callback, statistics["nugget-pipeline"])
 
-                        if lower_num < self._len_ranked_list // 2:
-                            higher_left = max(0, higher_left - (self._len_ranked_list // 2 - lower_num))
-                        elif higher_num < self._len_ranked_list // 2:
-                            lower_right = min(len(remaining_documents),
-                                            lower_right + (self._len_ranked_list // 2 - higher_num))
+                    statistics[attribute.name]["num_confirmed_match"] += 1
 
-                        selected_documents: List[Tuple[Document, float]] = remaining_documents[higher_left:lower_right]
+                    confirmed_nugget = InformationNugget(feedback_result["document"], feedback_result["start"], feedback_result["end"])
+                    confirmed_nugget[LabelSignal] = attribute.name
 
-                        num_nuggets_above: int = higher_left
-                        num_nuggets_below: int = len(remaining_documents) - lower_right
-                    else:
-                        logger.error(f"Unknown sampling mode '{self._sampling_mode}'!")
-                        assert False, f"Unknown sampling mode '{self._sampling_mode}'!"
+                    run_nugget_pipeline([confirmed_nugget])
 
+                    # add other signals for this nugget
+                    confirmed_nugget[CachedDistanceSignal] = CachedDistanceSignal(0.0)
+                    # TODO: think about other signals that should be added
 
-                    # present documents to the user for feedback   
-                    feedback_nuggets, feedback_nuggets_old_cached_distances = zip(
-                    *(
-                        (feedback_nugget, feedback_nugget[CachedDistanceSignal]) for feedback_nugget in
-                        (
-                            doc.nuggets[doc[CurrentMatchIndexSignal]] for doc in selected_documents)
-                     )
-                    )
-                    
+                    # add this nugget to the document as a match and remove the document from remaining documents
+                    feedback_result["document"].nuggets.append(confirmed_nugget)
+                    feedback_result["document"].attribute_mappings[attribute.name] = [confirmed_nugget]
+                    remaining_documents.remove(feedback_result["document"])
 
-                    num_feedback += 1
-                    statistics[attribute.name]["num_feedback"] += 1
-                    t0 = time.time()
-                    feedback_result: Dict[str, Any] = interaction_callback(
-                        self.identifier,
-                        {
-                            "max-distance": self._max_distance,
-                            "nuggets": feedback_nuggets,
-                            "attribute": attribute,
-                            "num-feedback": num_feedback,
-                            "num-nuggets-above": num_nuggets_above,
-                            "num-nuggets-below": num_nuggets_below
-                        }
-                    )
+                    # Find more nuggets that are similar to this match
+                    additional_nuggets: List[Tuple[Document, int, int]] = self._find_additional_nuggets(confirmed_nugget, remaining_documents)
+                    statistics[attribute.name]["num_additional_nuggets"] += len(additional_nuggets)
+                    if len(additional_nuggets) == 0:
+                        continue
+                    # convert nugget description into InformationNugget
+                    additional_nuggets = list(map(lambda i: InformationNugget(*i), additional_nuggets))
+                    for additional_nugget in additional_nuggets:
+                        additional_nugget[LabelSignal] = attribute.name
+                        additional_nugget.document.nuggets.append(additional_nugget)
+                    run_nugget_pipeline(additional_nuggets)
 
-                    t1 = time.time()
-                    statistics[attribute.name]["feedback_durations"].append(t1 - t0)
+                    # TODO: maybe there is a better way than to compute distances based on currently confirmed nugget?
+                    # calculate proper distances based on currently confirmed nugget
+                    # update the distances for the other documents
 
-                    if feedback_result["message"] == "stop-interactive-matching":
-                        statistics[attribute.name]["stopped_matching_by_hand"] = True
-                        continue_matching = False
-                    elif feedback_result["message"] == "no-match-in-document":
-                        statistics[attribute.name]["num_no_match_in_document"] += 1
-                        feedback_result["nugget"].document.attribute_mappings[attribute.name] = []
-                        remaining_documents.remove(feedback_result["nugget"].document)
+                    target = confirmed_nugget[CombinedEmbeddingSignal]
+                    self._vector_database.updating_distances_documents(target_embedding=target, documents = remaining_documents, document_base=document_base)
 
-                        if self._adjust_threshold:
-                            # threshold adjustment: if the given nugget's cached distance is smaller than the threshold,
-                            # update the threshold to the minimum cached distance of all nuggets that are above in the
-                            # ranked list, but were below the threshold before
-                            if feedback_result["nugget"][CachedDistanceSignal] < self._max_distance:
+                elif feedback_result["message"] == "is-match":
+                    statistics[attribute.name]["num_confirmed_match"] += 1
+                    feedback_result["nugget"].document.attribute_mappings[attribute.name] = [feedback_result["nugget"]]
+                    remaining_documents.remove(feedback_result["nugget"].document)
+
+                    # update the distances for the other documents
+                    # update the distances for the other documents
+
+                    target = feedback_result["nugget"][CombinedEmbeddingSignal]
+                    self._vector_database.updating_distances_documents(target_embedding=target, documents = remaining_documents, document_base=document_base)
+
+                    if self._adjust_threshold:
+                        # threshold adjustment: if the confirmed nugget's distance is larger than the threshold, update
+                        # the threshold to the maximum cached distance of all nuggets that are below in the ranked list,
+                        # but were above the threshold before
+                        if feedback_result["not-a-match"] is None:  # nugget from original list confirmed
+                            if feedback_result["nugget"][CachedDistanceSignal] > self._max_distance:
                                 nugget_ix = -1
                                 for ix, nugget in enumerate(feedback_nuggets):
                                     if nugget is feedback_result["nugget"]:
@@ -696,143 +790,48 @@ class RankingBasedMatcherVDB(BaseMatcher):
                                         break
                                 assert nugget_ix != -1
 
-                                if nugget_ix > 0:
-                                    min_dist = 1
-                                    for ix in range(nugget_ix):
-                                        if feedback_nuggets_old_cached_distances[ix] < self._max_distance:
-                                            min_dist = min(min_dist, feedback_nuggets[ix][CachedDistanceSignal])
-                                    if min_dist < self._max_distance:
-                                        self._max_distance = min_dist
-                                        statistics[attribute.name]["max_distances"].append(min_dist)
-                                        logger.info(f"NO MATCH IN DOCUMENT: Decreased the maximum distance to "
-                                                    f"{self._max_distance}.")
-                                    else:
-                                        logger.info("NO MATCH IN DOCUMENT: Did not change the maximum distance since it "
-                                                    "would not be decreased.")
-                                else:
-                                    logger.info("NO MATCH IN DOCUMENT: Did not change the maximum distance since the "
-                                                "document is at the top of the list.")
-                            else:
-                                logger.info("NO MATCH IN DOCUMENT: Did not change the maximum distance since the document"
-                                            "was already above the old threshold.")
-
-                    elif feedback_result["message"] == "custom-match":
-                        statistics[attribute.name]["num_custom_match"] += 1
-
-                        def run_nugget_pipeline(nuggets):
-                            # run the nugget pipeline for this nugget
-                            dummy_documents = []
-                            for n in nuggets:
-                                dummy_document = Document("dummy", n.document.text)
-                                dummy_document[SentenceStartCharsSignal] = n.document[SentenceStartCharsSignal]
-                                dummy_document.nuggets.append(n)
-                                # TODO: think about other signals that might be required
-                                dummy_documents.append(dummy_document)
-
-                            dummy_document_base = DocumentBase(dummy_documents, [])
-                            self._nugget_pipeline(dummy_document_base, interaction_callback, status_callback, statistics["nugget-pipeline"])
-
-                        statistics[attribute.name]["num_confirmed_match"] += 1
-
-                        confirmed_nugget = InformationNugget(feedback_result["document"], feedback_result["start"], feedback_result["end"])
-                        confirmed_nugget[LabelSignal] = attribute.name
-
-                        run_nugget_pipeline([confirmed_nugget])
-
-                        # add other signals for this nugget
-                        confirmed_nugget[CachedDistanceSignal] = CachedDistanceSignal(0.0)
-                        # TODO: think about other signals that should be added
-
-                        # add this nugget to the document as a match and remove the document from remaining documents
-                        feedback_result["document"].nuggets.append(confirmed_nugget)
-                        feedback_result["document"].attribute_mappings[attribute.name] = [confirmed_nugget]
-                        remaining_documents.remove(feedback_result["document"])
-
-                        # Find more nuggets that are similar to this match
-                        additional_nuggets: List[Tuple[Document, int, int]] = self._find_additional_nuggets(confirmed_nugget, remaining_documents)
-                        statistics[attribute.name]["num_additional_nuggets"] += len(additional_nuggets)
-                        if len(additional_nuggets) == 0:
-                            continue
-                        # convert nugget description into InformationNugget
-                        additional_nuggets = list(map(lambda i: InformationNugget(*i), additional_nuggets))
-                        for additional_nugget in additional_nuggets:
-                            additional_nugget[LabelSignal] = attribute.name
-                            additional_nugget.document.nuggets.append(additional_nugget)
-                        run_nugget_pipeline(additional_nuggets)
-
-                        # TODO: maybe there is a better way than to compute distances based on currently confirmed nugget?
-                        # calculate proper distances based on currently confirmed nugget
-                        # update the distances for the other documents
-
-                        target = confirmed_nugget[CombinedEmbeddingSignal]
-                        vdb.updating_distances_documents(target_embedding=target, documents = remaining_documents)
-
-                    elif feedback_result["message"] == "is-match":
-                        statistics[attribute.name]["num_confirmed_match"] += 1
-                        feedback_result["nugget"].document.attribute_mappings[attribute.name] = [feedback_result["nugget"]]
-                        remaining_documents.remove(feedback_result["nugget"].document)
-
-                        # update the distances for the other documents
-                        # update the distances for the other documents
-
-                        target = feedback_result["nugget"][CombinedEmbeddingSignal]
-                        vdb.updating_distances_documents(target_embedding=target, documents = remaining_documents)
-
-                        if self._adjust_threshold:
-                            # threshold adjustment: if the confirmed nugget's distance is larger than the threshold, update
-                            # the threshold to the maximum cached distance of all nuggets that are below in the ranked list,
-                            # but were above the threshold before
-                            if feedback_result["not-a-match"] is None:  # nugget from original list confirmed
-                                if feedback_result["nugget"][CachedDistanceSignal] > self._max_distance:
-                                    nugget_ix = -1
-                                    for ix, nugget in enumerate(feedback_nuggets):
-                                        if nugget is feedback_result["nugget"]:
-                                            nugget_ix = ix
-                                            break
-                                    assert nugget_ix != -1
-
-                                    if nugget_ix < len(feedback_nuggets) - 1:
-                                        max_dist = 0
-                                        for ix in range(nugget_ix + 1, len(feedback_nuggets)):
-                                            if feedback_nuggets_old_cached_distances[ix] > self._max_distance:
-                                                max_dist = max(max_dist, feedback_nuggets[ix][CachedDistanceSignal])
-                                        if max_dist > self._max_distance:
-                                            self._max_distance = max_dist
-                                            statistics[attribute.name]["max_distances"].append(max_dist)
-                                            logger.info(f"CONFIRMED NUGGET FROM RANKED LIST: Increased the maximum distance"
-                                                        f"to {self._max_distance}.")
-                                        else:
-                                            logger.info("CONFIRMED NUGGET FROM RANKED LIST: Did not change the maximum "
-                                                        "distance since it would not be increased.")
+                                if nugget_ix < len(feedback_nuggets) - 1:
+                                    max_dist = 0
+                                    for ix in range(nugget_ix + 1, len(feedback_nuggets)):
+                                        if feedback_nuggets_old_cached_distances[ix] > self._max_distance:
+                                            max_dist = max(max_dist, feedback_nuggets[ix][CachedDistanceSignal])
+                                    if max_dist > self._max_distance:
+                                        self._max_distance = max_dist
+                                        statistics[attribute.name]["max_distances"].append(max_dist)
+                                        logger.info(f"CONFIRMED NUGGET FROM RANKED LIST: Increased the maximum distance"
+                                                    f"to {self._max_distance}.")
                                     else:
                                         logger.info("CONFIRMED NUGGET FROM RANKED LIST: Did not change the maximum "
-                                                    "distance since the confirmed nugget is at the bottom of the list.")
+                                                    "distance since it would not be increased.")
                                 else:
-                                    logger.info("CONFIRMED NUGGET FROM RANKED LIST: Did not change the maximum distance "
-                                                "since the document was already below the old threshold.")
+                                    logger.info("CONFIRMED NUGGET FROM RANKED LIST: Did not change the maximum "
+                                                "distance since the confirmed nugget is at the bottom of the list.")
                             else:
-                                logger.info("CONFIRMED NUGGET NOT IN RANKED LIST: Did not change the maximum distance "
-                                            "since the confirmed nugget was not in the ranked list.")
+                                logger.info("CONFIRMED NUGGET FROM RANKED LIST: Did not change the maximum distance "
+                                            "since the document was already below the old threshold.")
+                        else:
+                            logger.info("CONFIRMED NUGGET NOT IN RANKED LIST: Did not change the maximum distance "
+                                        "since the confirmed nugget was not in the ranked list.")
 
-                tak: float = time.time()
-                logger.info(f"Executed interactive matching in {tak - tik} seconds.")
+            tak: float = time.time()
+            logger.info(f"Executed interactive matching in {tak - tik} seconds.")
 
-                # update remaining documents
-                logger.info("Update remaining documents.")
-                tik: float = time.time()
+            # update remaining documents
+            logger.info("Update remaining documents.")
+            tik: float = time.time()
 
-                for document in remaining_documents:
-                    current_guess: InformationNugget = document.nuggets[document[CurrentMatchIndexSignal]]
-                    if current_guess[CachedDistanceSignal] < self._max_distance:
-                        statistics[attribute.name]["num_guessed_match"] += 1
-                        document.attribute_mappings[attribute.name] = [current_guess]
-                        logger.info(f"Document: {document.name}; Attribute: {attribute.name}; Nugget: {current_guess.text}")
-                    else:
-                        statistics[attribute.name]["num_blocked_by_max_distance"] += 1
-                        document.attribute_mappings[attribute.name] = []
+            for document in remaining_documents:
+                current_guess: InformationNugget = document.nuggets[document[CurrentMatchIndexSignal]]
+                if current_guess[CachedDistanceSignal] < self._max_distance:
+                    statistics[attribute.name]["num_guessed_match"] += 1
+                    document.attribute_mappings[attribute.name] = [current_guess]
+                    logger.info(f"Document: {document.name}; Attribute: {attribute.name}; Nugget: {current_guess.text}")
+                else:
+                    statistics[attribute.name]["num_blocked_by_max_distance"] += 1
+                    document.attribute_mappings[attribute.name] = []
 
-                tak: float = time.time()
-                logger.info(f"Updated remaining documents in {tak - tik} seconds.")
+            tak: float = time.time()
+            logger.info(f"Updated remaining documents in {tak - tik} seconds.")
 
         pr.disable()
         s = io.StringIO()

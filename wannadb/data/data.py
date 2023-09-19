@@ -217,6 +217,7 @@ class Document:
         """
         self._name: str = name
         self._text: str = text
+        self._index: int = -1
 
         self._nuggets: List[InformationNugget] = []
         self._attribute_mappings: Dict[str, List[InformationNugget]] = {}
@@ -299,6 +300,12 @@ class Document:
             self._signals[signal_identifier].value = value
         else:  # signal not already set and value is not a signal object ==> get signal class by id and create object
             self._signals[signal_identifier] = signals.SIGNALS[signal_identifier](value)
+    
+    def set_index(self, index: int) -> None:
+        self._index = index
+
+    def get_index(self) -> int:
+        return self._index
 
 
 class DocumentBase:
