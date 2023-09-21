@@ -4,7 +4,7 @@ from typing import Dict, List, Any
 from wannadb.configuration import BasePipelineElement, register_configurable_element
 from wannadb.data.data import DocumentBase, InformationNugget
 from wannadb.data.signals import CachedContextSentenceSignal, \
-    SentenceStartCharsSignal, CombinedEmbeddingSignal
+    SentenceStartCharsSignal, CombinedEmbeddingSignal, AdjustedCombinedSignal
 from wannadb.interaction import BaseInteractionCallback
 from wannadb.statistics import Statistics
 from wannadb.status import BaseStatusCallback
@@ -94,7 +94,7 @@ class CombineEmbedder(BasePipelineElement):
     }
 
     generated_signal_identifiers: Dict[str, List[str]] = {
-        "nuggets": [CombinedEmbeddingSignal.identifier],
+        "nuggets": [CombinedEmbeddingSignal.identifier, AdjustedCombinedSignal],
         "attributes": [],
         "documents": []
     }
@@ -107,20 +107,31 @@ class CombineEmbedder(BasePipelineElement):
         signals = ['LabelEmbeddingSignal', 'TextEmbeddingSignal', 'ContextSentenceEmbeddingSignal']
 
         nuggets = document_base.nuggets
+        sample_attribute = document_base.attributes[0]
         
         for nugget in nuggets:
             embedding_list = []
+            adjusted_list=[]
             for signal in signals:
                 if  signal in nugget.signals:
                     embedding_list.append(nugget[signal])
                     logger.info(f"Embedding for nugget: {nugget[signal]}")
+                    if signal in sample_attribute.signals:
+                        adjusted_list.append(nugget[signal])
                 else:
                     embedding_list.append(np.zeros(1024))
 
             if len(embedding_list) > 0:
-                        combined_embedding =np.concatenate(embedding_list)
-                        nugget[CombinedEmbeddingSignal] = CombinedEmbeddingSignal(combined_embedding)
-                        logger.info(f"Combined embedding: {nugget[CombinedEmbeddingSignal]} created!")
+                combined_embedding =np.concatenate(embedding_list)
+                nugget[CombinedEmbeddingSignal] = CombinedEmbeddingSignal(combined_embedding)
+                logger.info(f"Combined embedding: {nugget[CombinedEmbeddingSignal]} created!")
+                print(len(nugget[CombinedEmbeddingSignal]))
+            if len(adjusted_list):
+                adjusted_embedding =np.concatenate(adjusted_list)
+                nugget[AdjustedCombinedSignal] = AdjustedCombinedSignal(adjusted_embedding)
+                logger.info(f"Combined embedding: {nugget[AdjustedCombinedSignal]} created!")
+                print(len(nugget[AdjustedCombinedSignal]))
+
     
     def to_config(self) -> Dict[str, Any]:
         return {

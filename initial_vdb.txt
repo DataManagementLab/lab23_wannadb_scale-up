@@ -1,0 +1,297 @@
+         14276 function calls (14203 primitive calls) in 0.457 seconds
+
+   Ordered by: cumulative time
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.002    0.002    0.457    0.457 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\wannadb\data\vector_database.py:210(compute_inital_distances)
+        3    0.000    0.000    0.437    0.146 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\decorators.py:115(handler)
+        3    0.000    0.000    0.437    0.146 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\decorators.py:154(handler)
+        3    0.000    0.000    0.437    0.146 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\decorators.py:38(handler)
+      6/3    0.000    0.000    0.433    0.144 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\interceptor.py:32(intercept_unary_unary)
+        1    0.000    0.000    0.433    0.433 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\orm\collection.py:566(search)
+        1    0.000    0.000    0.433    0.433 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\grpc_handler.py:630(search)
+        1    0.000    0.000    0.433    0.433 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\grpc_handler.py:604(_execute_search_requests)
+        1    0.000    0.000    0.432    0.432 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_interceptor.py:240(__call__)
+      2/1    0.000    0.000    0.432    0.432 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_interceptor.py:255(_with_call)
+      2/1    0.000    0.000    0.432    0.432 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_interceptor.py:268(continuation)
+        1    0.000    0.000    0.432    0.432 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_interceptor.py:292(with_call)
+        1    0.000    0.000    0.432    0.432 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_channel.py:1032(with_call)
+        1    0.000    0.000    0.432    0.432 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_channel.py:996(_blocking)
+        1    0.432    0.432    0.432    0.432 {method 'next_event' of 'grpc._cython.cygrpc.SegregatedCall' objects}
+      129    0.011    0.000    0.011    0.000 {built-in method builtins.print}
+        1    0.000    0.000    0.004    0.004 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\orm\collection.py:58(__init__)
+        4    0.000    0.000    0.003    0.001 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\threading.py:280(wait)
+       12    0.003    0.000    0.003    0.000 {method 'acquire' of '_thread.lock' objects}
+       98    0.000    0.000    0.003    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\orm\search.py:150(__next__)
+        2    0.000    0.000    0.003    0.001 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_channel.py:780(result)
+        2    0.000    0.000    0.003    0.001 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_common.py:117(wait)
+        2    0.000    0.000    0.003    0.001 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_common.py:110(_wait_once)
+       98    0.000    0.000    0.003    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\abstract.py:34(__next__)
+       63    0.000    0.000    0.002    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\logging\__init__.py:1424(info)
+       63    0.000    0.000    0.002    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\logging\__init__.py:1553(_log)
+      100    0.000    0.000    0.002    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\abstract.py:20(__getitem__)
+        1    0.000    0.000    0.002    0.002 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\grpc_handler.py:314(has_collection)
+        1    0.000    0.000    0.002    0.002 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\grpc_handler.py:333(describe_collection)
+      107    0.000    0.000    0.002    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\abstract.py:316(get__item)
+       63    0.000    0.000    0.002    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\logging\__init__.py:1538(makeRecord)
+       63    0.001    0.000    0.002    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\logging\__init__.py:278(__init__)
+      107    0.001    0.000    0.001    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\entity_helper.py:154(extract_row_data_from_fields_data)
+      4/2    0.000    0.000    0.001    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_interceptor.py:308(future)
+      4/2    0.000    0.000    0.001    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_interceptor.py:319(continuation)
+     2747    0.001    0.000    0.001    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\wannadb\data\data.py:236(__eq__)
+      197    0.001    0.000    0.001    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\abstract.py:309(__len__)
+        2    0.000    0.000    0.001    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_channel.py:1045(future)
+        2    0.000    0.000    0.001    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_channel.py:1410(create)
+        2    0.000    0.000    0.001    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_channel.py:1387(_run_channel_spin_thread)
+       63    0.000    0.000    0.001    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\ntpath.py:214(basename)
+     3603    0.000    0.000    0.001    0.000 {built-in method builtins.isinstance}
+       63    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\ntpath.py:180(split)
+        2    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\threading.py:851(start)
+       63    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\logging\__init__.py:1502(findCaller)
+        2    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\threading.py:556(wait)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\orm\search.py:185(__str__)
+       63    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\ntpath.py:203(splitext)
+       63    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\wannadb\data\data.py:103(__setitem__)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\orm\search.py:157(__getitem__)
+       63    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\genericpath.py:121(_splitext)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\prepare.py:568(search_requests_with_expr)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\orm\schema.py:148(construct_from_dict)
+      126    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\wannadb\data\signals.py:35(__init__)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\abstract.py:500(__init__)
+        2    0.000    0.000    0.000    0.000 {method 'integrated_call' of 'grpc._cython.cygrpc.Channel' objects}
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\abstract.py:511(_pack)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\abstract.py:26(<listcomp>)
+       63    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\wannadb\data\data.py:285(__setitem__)
+       63    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\ntpath.py:124(splitdrive)
+        6    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\orm\schema.py:300(construct_from_dict)
+      126    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\wannadb\data\data.py:89(__getitem__)
+      129    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\abc.py:96(__instancecheck__)
+       63    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\logging\__init__.py:1579(handle)
+     60/8    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\copy.py:128(deepcopy)
+       63    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\ntpath.py:44(normcase)
+        6    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\orm\schema.py:250(__init__)
+      305    0.000    0.000    0.000    0.000 {method 'HasField' of 'google.protobuf.pyext._message.CMessage' objects}
+       63    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\wannadb\data\data.py:271(__getitem__)
+       97    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\orm\search.py:91(entity)
+        6    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_interceptor.py:560(<lambda>)
+      107    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\abstract.py:273(entity)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\prepare.py:557(_prepare_placeholders)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\orm\schema.py:150(<listcomp>)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_channel.py:161(_handle_event)
+      129    0.000    0.000    0.000    0.000 {built-in method _abc._abc_instancecheck}
+       97    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\abstract.py:245(get)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\orm\schema.py:65(__init__)
+        1    0.000    0.000    0.000    0.000 {method 'segregated_call' of 'grpc._cython.cygrpc.Channel' objects}
+      126    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\orm\search.py:101(distance)
+        3    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_channel.py:969(_prepare)
+        2    0.000    0.000    0.000    0.000 {built-in method _thread.start_new_thread}
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\orm\schema.py:75(<listcomp>)
+        3    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_channel.py:1673(unary_unary)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\blob.py:11(vector_float_to_bytes)
+      543    0.000    0.000    0.000    0.000 {built-in method builtins.len}
+        4    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_common.py:83(_transform)
+       10    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\orm\search.py:121(__str__)
+        9    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\copy.py:226(_deepcopy_dict)
+        3    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\orm\schema.py:281(__deepcopy__)
+      189    0.000    0.000    0.000    0.000 {method 'rfind' of 'str' objects}
+       63    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\logging\__init__.py:1633(callHandlers)
+       10    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\abstract.py:268(__str__)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\abstract.py:139(__init__)
+       97    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\abstract.py:248(value_of_field)
+        3    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_channel.py:1407(_channel_managed_call_management)
+       63    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\logging\__init__.py:156(<lambda>)
+        2    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\orm\search.py:231(__getitem__)
+      363    0.000    0.000    0.000    0.000 {method 'get' of 'dict' objects}
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\abstract.py:161(__pack)
+        2    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\threading.py:777(__init__)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_common.py:100(deserialize)
+        3    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\check.py:351(check_pass_param)
+       21    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\typing.py:237(inner)
+      189    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\wannadb\data\data.py:256(nuggets)
+      107    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\abstract.py:225(__init__)
+       65    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\threading.py:1314(current_thread)
+        1    0.000    0.000    0.000    0.000 {built-in method FromString}
+      107    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\abstract.py:262(__init__)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\abstract.py:183(<listcomp>)
+       63    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\logging\__init__.py:119(getLevelName)
+        2    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\abstract.py:579(get__item)
+        3    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\abstract.py:61(__init__)
+        5    0.000    0.000    0.000    0.000 {method 'extend' of 'google.protobuf.pyext._message.RepeatedScalarContainer' objects}
+        2    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\abstract.py:294(__init__)
+      126    0.000    0.000    0.000    0.000 {built-in method builtins.hasattr}
+       63    0.000    0.000    0.000    0.000 {built-in method builtins.max}
+        3    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_channel.py:884(_start_unary_request)
+       63    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\orm\search.py:81(id)
+      252    0.000    0.000    0.000    0.000 {built-in method nt.fspath}
+       10    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\abstract.py:231(__str__)
+        3    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_channel.py:118(__init__)
+       10    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\check.py:339(check)
+        3    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\abstract.py:79(__pack)
+       63    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\ntpath.py:34(_get_bothseps)
+      126    0.000    0.000    0.000    0.000 {method 'replace' of 'str' objects}
+       63    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\logging\__init__.py:1677(isEnabledFor)
+        4    0.000    0.000    0.000    0.000 {method 'SerializeToString' of 'google.protobuf.pyext._message.CMessage' objects}
+        3    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_common.py:96(serialize)
+        5    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\threading.py:228(__init__)
+        1    0.000    0.000    0.000    0.000 {built-in method _struct.pack}
+        6    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\interceptor.py:84(intercept_call)
+       63    0.000    0.000    0.000    0.000 {built-in method sys._getframe}
+       82    0.000    0.000    0.000    0.000 {method 'append' of 'list' objects}
+        3    0.000    0.000    0.000    0.000 {method 'append' of 'google.protobuf.pyext._message.RepeatedCompositeContainer' objects}
+      126    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\wannadb\data\signals.py:134(value)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\prepare.py:640(<listcomp>)
+      126    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\abstract.py:281(distance)
+       63    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\wannadb\data\data.py:246(name)
+       63    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\threading.py:1049(name)
+      128    0.000    0.000    0.000    0.000 {built-in method _thread.get_ident}
+      107    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\orm\search.py:75(__init__)
+       63    0.000    0.000    0.000    0.000 {built-in method nt.getpid}
+       63    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\logging\__init__.py:787(filter)
+       63    0.000    0.000    0.000    0.000 {method 'rstrip' of 'str' objects}
+       98    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\wannadb\data\data.py:345(documents)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\types.py:264(cmp_consistency_level)
+        3    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_interceptor.py:554(unary_unary)
+        2    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\entity_helper.py:134(extract_dynamic_field_from_result)
+       66    0.000    0.000    0.000    0.000 {built-in method time.time}
+      9/6    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\typing.py:693(__hash__)
+        6    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\orm\schema.py:311(to_dict)
+        2    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\orm\collection.py:165(_get_connection)
+       12    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\threading.py:256(__enter__)
+        2    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\threading.py:521(__init__)
+       63    0.000    0.000    0.000    0.000 C:\Users\Pascal\Desktop\WannaDB\lab23_wannadb_scale-up\wannadb\data\signals.py:113(value)
+       63    0.000    0.000    0.000    0.000 {method 'lower' of 'str' objects}
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\ts_utils.py:77(construct_guarantee_ts)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_channel.py:899(_end_unary_response_blocking)
+        2    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\orm\connections.py:438(_fetch_handler)
+      6/3    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\typing.py:687(__eq__)
+       12    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\threading.py:259(__exit__)
+        6    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_interceptor.py:68(_unwrap_client_call_details)
+        2    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\prepare.py:223(describe_collection_request)
+        6    0.000    0.000    0.000    0.000 {built-in method _thread.allocate_lock}
+        2    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\google\protobuf\internal\enum_type_wrapper.py:95(values)
+        3    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_channel.py:492(__del__)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\orm\schema.py:229(to_dict)
+       63    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\multiprocessing\process.py:189(name)
+        3    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_channel.py:421(__init__)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\threading.py:374(notify_all)
+     12/6    0.000    0.000    0.000    0.000 {built-in method builtins.hash}
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\abstract.py:200(dict)
+        7    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\prepare.py:613(dump)
+       12    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\copy.py:242(_keep_alive)
+        3    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\threading.py:82(RLock)
+        3    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_channel.py:1350(__new__)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\check.py:172(is_legal_search_data)
+       10    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\orm\search.py:188(on_result)
+       63    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\multiprocessing\process.py:37(current_process)
+        3    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\check.py:347(_get_param_checker)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\orm\schema.py:233(<listcomp>)
+        2    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\abc.py:100(__subclasscheck__)
+        2    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\google\protobuf\internal\enum_type_wrapper.py:102(<listcomp>)
+       63    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\abstract.py:277(id)
+        6    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\enum.py:289(__call__)
+       93    0.000    0.000    0.000    0.000 {built-in method builtins.id}
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\types.py:286(get_consistency_level)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\threading.py:351(notify)
+        2    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\_weakrefset.py:82(add)
+        1    0.000    0.000    0.000    0.000 {method 'extend' of 'google.protobuf.pyext._message.RepeatedCompositeContainer' objects}
+        2    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\google\protobuf\internal\enum_type_wrapper.py:115(__getattr__)
+        6    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\orm\schema.py:286(_parse_type_params)
+        3    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_channel.py:958(__init__)
+        2    0.000    0.000    0.000    0.000 {built-in method builtins.all}
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\orm\schema.py:96(_check_fields)
+        3    0.000    0.000    0.000    0.000 {built-in method now}
+       15    0.000    0.000    0.000    0.000 {built-in method __new__ of type object at 0x00007FFB6D575C60}
+        3    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_common.py:70(encode)
+        1    0.000    0.000    0.000    0.000 {built-in method ujson.dumps}
+        3    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\typing.py:864(__eq__)
+       10    0.000    0.000    0.000    0.000 {method '__enter__' of '_thread.RLock' objects}
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\google\protobuf\internal\enum_type_wrapper.py:76(Value)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\check.py:181(is_legal_output_fields)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\abstract.py:208(<listcomp>)
+        6    0.000    0.000    0.000    0.000 <string>:1(<lambda>)
+        2    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\orm\search.py:262(on_result)
+        2    0.000    0.000    0.000    0.000 {built-in method _abc._abc_subclasscheck}
+        2    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\threading.py:750(_newname)
+        3    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\typing.py:869(__hash__)
+        2    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_interceptor.py:179(__init__)
+        3    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\singleton_utils.py:9(__call__)
+        6    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\enum.py:580(__new__)
+       48    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\copy.py:182(_deepcopy_atomic)
+        2    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\threading.py:1118(daemon)
+        3    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\abstract.py:118(dict)
+        2    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\threading.py:268(_acquire_restore)
+        2    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\threading.py:271(_is_owned)
+        3    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\check.py:188(<genexpr>)
+       10    0.000    0.000    0.000    0.000 {method '__exit__' of '_thread.RLock' objects}
+        3    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\abstract.py:14(__init__)
+        1    0.000    0.000    0.000    0.000 {method 'append' of 'google.protobuf.pyext._message.RepeatedScalarContainer' objects}
+        3    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_compression.py:49(augment_metadata)
+        2    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\check.py:88(is_legal_table_name)
+       13    0.000    0.000    0.000    0.000 {method 'items' of 'dict' objects}
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\abstract.py:189(_rewrite_schema_dict)
+        2    0.000    0.000    0.000    0.000 {method '_acquire_restore' of '_thread.RLock' objects}
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\orm\schema.py:81(_check_kwargs)
+        6    0.000    0.000    0.000    0.000 {method 'add' of 'set' objects}
+        4    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_channel.py:777(_is_complete)
+        2    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\threading.py:265(_release_save)
+        6    0.000    0.000    0.000    0.000 {method 'update' of 'dict' objects}
+        3    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_interceptor.py:234(__init__)
+        2    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\threading.py:1185(_make_invoke_excepthook)
+        2    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\check.py:178(<genexpr>)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_channel.py:937(_determine_deadline)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\orm\schema.py:40(validate_primary_key)
+        6    0.000    0.000    0.000    0.000 {method '__exit__' of '_thread.lock' objects}
+        7    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\orm\schema.py:373(dtype)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\orm\search.py:213(__init__)
+        6    0.000    0.000    0.000    0.000 {built-in method builtins.iter}
+        2    0.000    0.000    0.000    0.000 {built-in method builtins.min}
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\orm\schema.py:198(auto_id)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\check.py:164(is_legal_limit)
+        2    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\abstract.py:508(__len__)
+        2    0.000    0.000    0.000    0.000 {method '_release_save' of '_thread.RLock' objects}
+        4    0.000    0.000    0.000    0.000 {method 'extend' of 'list' objects}
+        3    0.000    0.000    0.000    0.000 {method 'encode' of 'str' objects}
+        4    0.000    0.000    0.000    0.000 {method 'append' of 'collections.deque' objects}
+        6    0.000    0.000    0.000    0.000 {method 'remove' of 'set' objects}
+        4    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_channel.py:1433(<genexpr>)
+        4    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\threading.py:529(is_set)
+        2    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\orm\search.py:137(__init__)
+        2    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\threading.py:1103(daemon)
+        2    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\check.py:97(is_legal_field_name)
+        3    0.000    0.000    0.000    0.000 {method '_is_owned' of '_thread.RLock' objects}
+        6    0.000    0.000    0.000    0.000 {built-in method builtins.next}
+        2    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_channel.py:199(_event_handler)
+        3    0.000    0.000    0.000    0.000 {built-in method builtins.getattr}
+        3    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_channel.py:95(_deadline)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\check.py:240(is_legal_round_decimal)
+        2    0.000    0.000    0.000    0.000 {method '__enter__' of '_thread.lock' objects}
+        3    0.000    0.000    0.000    0.000 {grpc._cython.cygrpc.get_fork_epoch}
+        2    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_interceptor.py:216(result)
+        3    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\grpc\_channel.py:1354(with_wait_for_ready)
+        2    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\orm\schema.py:354(params)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\check.py:244(is_legal_travel_timestamp)
+        1    0.000    0.000    0.000    0.000 {method 'details' of 'grpc._cython.cygrpc.ReceiveStatusOnClientOperation' objects}
+        3    0.000    0.000    0.000    0.000 {grpc._cython.cygrpc.build_census_context}
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\orm\schema.py:48(validate_partition_key)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\check.py:168(is_legal_anns_field)
+        3    0.000    0.000    0.000    0.000 {built-in method builtins.issubclass}
+        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
+        2    0.000    0.000    0.000    0.000 {method 'release' of '_thread.lock' objects}
+        1    0.000    0.000    0.000    0.000 {method 'type' of 'grpc._cython.cygrpc.SendMessageOperation' objects}
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\orm\schema.py:156(primary_field)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\check.py:191(is_legal_partition_name_array)
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\client\check.py:248(is_legal_guarantee_timestamp)
+        1    0.000    0.000    0.000    0.000 {method 'type' of 'grpc._cython.cygrpc.ReceiveStatusOnClientOperation' objects}
+        1    0.000    0.000    0.000    0.000 {method 'trailing_metadata' of 'grpc._cython.cygrpc.ReceiveStatusOnClientOperation' objects}
+        1    0.000    0.000    0.000    0.000 {method 'code' of 'grpc._cython.cygrpc.ReceiveStatusOnClientOperation' objects}
+        1    0.000    0.000    0.000    0.000 {method 'error_string' of 'grpc._cython.cygrpc.ReceiveStatusOnClientOperation' objects}
+        1    0.000    0.000    0.000    0.000 {method 'message' of 'grpc._cython.cygrpc.ReceiveMessageOperation' objects}
+        1    0.000    0.000    0.000    0.000 {method 'type' of 'grpc._cython.cygrpc.SendCloseFromClientOperation' objects}
+        1    0.000    0.000    0.000    0.000 {method 'type' of 'grpc._cython.cygrpc.SendInitialMetadataOperation' objects}
+        1    0.000    0.000    0.000    0.000 {grpc._cython.cygrpc.get_deadline_from_context}
+        1    0.000    0.000    0.000    0.000 C:\Users\Pascal\AppData\Local\Programs\Python\Python39\lib\site-packages\pymilvus\orm\search.py:143(__iter__)
+        1    0.000    0.000    0.000    0.000 {method 'type' of 'grpc._cython.cygrpc.ReceiveInitialMetadataOperation' objects}
+        1    0.000    0.000    0.000    0.000 {method 'initial_metadata' of 'grpc._cython.cygrpc.ReceiveInitialMetadataOperation' objects}
+        1    0.000    0.000    0.000    0.000 {method 'type' of 'grpc._cython.cygrpc.ReceiveMessageOperation' objects}
+
+

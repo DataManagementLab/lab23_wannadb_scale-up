@@ -21,7 +21,7 @@ from wannadb.data.data import DocumentBase, Attribute, Document, InformationNugg
 import numpy as np
 from wannadb.statistics import Statistics
 from wannadb.data.signals import LabelEmbeddingSignal, TextEmbeddingSignal, ContextSentenceEmbeddingSignal, RelativePositionSignal,UserProvidedExamplesSignal, \
-    CachedDistanceSignal, CurrentMatchIndexSignal, CombinedEmbeddingSignal, POSTagsSignal
+    CachedDistanceSignal, CurrentMatchIndexSignal, CombinedEmbeddingSignal, POSTagsSignal, AdjustedCombinedSignal
 from scipy.spatial.distance import cosine
 from sklearn.metrics.pairwise import cosine_distances
 
@@ -86,19 +86,17 @@ class vectordb:
             enable_dynamic_field=True,
         )
 
-        # vector index params
 
+        # vector index params
         self._index_params = {
         "metric_type":"COSINE",
-        "index_type":"IVF_FLAT",
-        "params":{"nlist":65536}
+        "index_type":"FLAT"
         }
 
         self._search_params = {
         "metric_type": "COSINE", 
         "offset": 0, 
         "ignore_growing": False, 
-        "params": {"nprobe": 65536}
         }
 
 
@@ -119,62 +117,108 @@ class vectordb:
         """
         Extract nugget data from document base
         """
-        if "Embeddings" not in utility.list_collections():
-             collection = Collection(
-                    name="Embeddings",
+        if "full_embeddings" not in utility.list_collections():
+            full_collection = Collection(
+                    name="full_embeddings",
                     schema=self._embbeding_schema,
                     using="default",
                     shards_num=1,
                 )
-             logger.info("Created collection Embeddings")
+            logger.info("Created collection Embeddings")
+
+        if "adjusted_embeddings" not in utility.list_collections():
+             
+            sample_nugget = documentBase.nuggets[0]
+            sample_attribute = documentBase.attributes[0]
+
+            embeddings_nugget = set(self._embedding_identifier).intersection(sample_nugget.signals)
+            embeddings_attribute = set(self._embedding_identifier).intersection(sample_attribute.signals)
+            final_embeddings = embeddings_nugget.intersection(embeddings_attribute)
+
+            required_dim = len(final_embeddings)
+             
+            adjusted_embedding_value = FieldSchema( 
+            name="embedding_value",
+            dtype=DataType.FLOAT_VECTOR,
+            dim=1024*required_dim,
+            )
+
+            print(f"Required_dim: {required_dim}")
+
+            adjusted_embbeding_schema = CollectionSchema(
+            fields=[self._id, self._document_id, adjusted_embedding_value],
+            description="Schema for nuggets",
+            enable_dynamic_field=True,
+            )
+   
+            adjusted_collection = Collection(
+                    name="adjusted_embeddings",
+                    schema=adjusted_embbeding_schema,
+                    using="default",
+                    shards_num=1,
+                )
+            logger.info("Created collection Embeddings")
 
         logger.info("Start extracting nuggets from document base")
-        collection = Collection("Embeddings")
+        full_collection = Collection("full_embeddings")
+        adjusted_collection = Collection("adjusted_embeddings")
         for doc_id, document in enumerate(documentBase.documents):
                 document.set_index(doc_id)
                 for id,nugget in enumerate(document.nuggets):
 
                     combined_embedding = nugget[CombinedEmbeddingSignal]
+                    print(f"Dim full embedding: {len(combined_embedding)}")
                     data = [
                         [id],
                         [doc_id],
                         [combined_embedding],     
                         ]
-                    collection.insert(data)
-                    logger.info(f"Inserted nugget {id} {combined_embedding} from document {document.name} into collection")
+                    full_collection.insert(data)
+                    logger.info(f"Inserted nugget {id} {combined_embedding} from document {document.name} into full_collection")
 
-                collection.flush()
+                    adjusted_combined_embedding = nugget[AdjustedCombinedSignal]
+                    print(f"Dimension Nugget: {len(nugget[AdjustedCombinedSignal])}")
+                    data = [
+                        [id],
+                        [doc_id],
+                        [adjusted_combined_embedding],     
+                        ]
+                    adjusted_collection.insert(data)
+                    logger.info(f"Inserted nugget {id} {adjusted_combined_embedding} from document {document.name} into adjusted_collection")
+
+                full_collection.flush()
+                adjusted_collection.flush()
         logger.info("Embedding insertion finished")
 
         #Vector index
         logger.info("Start indexing")
-        collection.create_index(
+        full_collection.create_index(
             field_name='embedding_value', 
             index_params=self._index_params
-            )    
+            )   
+        
+        adjusted_collection.create_index(
+            field_name='embedding_value', 
+            index_params=self._index_params
+            )  
         logger.info("Indexing finished")
         logger.info("Extraction finished")
-
-        collection.load()
-        self._embedding_collection = Collection('Embeddings')
 
     def compute_inital_distances(self, attribute_embedding : List[float], document_base: DocumentBase) -> List[Document]:
 
         remaining_documents: List[Document] = []
-        embedding_collection = Collection('Embeddings')
-        print(f"Anzahl Dokumente: {len(document_base.documents)}")
+        adjusted_embedding_collection = Collection('adjusted_embeddings')
  
-        results = embedding_collection.search(
+        results = adjusted_embedding_collection.search(
             data=[attribute_embedding], 
             anns_field="embedding_value", 
             param=self._search_params,
-            limit=16384,
+            limit=1,
             expr= None,
             output_fields=['id','document_id'],
             consistency_level="Strong"
         )
 
-        print(f"Results insgesamt: {results[0]}")
 
         for i in results[0]:
             #print(f"Result[i]: f{i}")
@@ -184,9 +228,8 @@ class vectordb:
                 current_nugget = i.id
 
                 current_document[CurrentMatchIndexSignal] = CurrentMatchIndexSignal(current_nugget)
-                print(f"Computed: {i.distance}")
+                print(f"Computed Distance: {i.distance}")
                 current_document.nuggets[current_nugget][CachedDistanceSignal] = CachedDistanceSignal(i.distance)
-                print(f"Saved: {current_document.nuggets[current_nugget][CachedDistanceSignal]}")
                 remaining_documents.append(current_document)
                 #print(f"Appended nugget: {current_nugget}; To document {current_document.name} cached index: {current_document[CurrentMatchIndexSignal]}; Cached distance {current_document.nuggets[current_nugget][CachedDistanceSignal]}")
                 logger.info(f"Appended nugget: {current_nugget}; To document {current_document.name} cached index: {current_document[CurrentMatchIndexSignal]}; Cached distance {current_document.nuggets[current_nugget][CachedDistanceSignal]}")
@@ -198,12 +241,12 @@ class vectordb:
         return remaining_documents
     
     def updating_distances_documents(self, target_embedding: List[float], documents: List[Document], document_base : DocumentBase):
-        embedding_collection = Collection('Embeddings')
+        full_embedding_collection = Collection('full_embeddings')
         doc_indexes = [doc.get_index() for doc in documents]
         processed = [] 
 
         #Compute the distance between the embeddings of the attribute and the embeddings of the nuggets
-        results = embedding_collection.search(
+        results = full_embedding_collection.search(
             data=[target_embedding], 
             anns_field="embedding_value", 
             param=self._search_params,
@@ -277,7 +320,6 @@ def generate_and_store_embedding(input_path):
                 SBERTLabelEmbedder("SBERTBertLargeNliMeanTokensResource"),
                 SBERTTextEmbedder("SBERTBertLargeNliMeanTokensResource"),
                 BERTContextSentenceEmbedder("BertLargeCasedResource"),
-                BERTContextSentenceEmbedder("BertLargeCasedResource"),
                 CombineEmbedder()
             ])
 
@@ -298,15 +340,15 @@ def generate_and_store_embedding(input_path):
         print(f"Document base has { len([attribute for attribute in document_base.attributes if 'LabelEmbeddingSignal' in attribute.signals.keys()])} attribute LabelEmbeddings.")
         print(f"Document base has { len([attribute for attribute in document_base.attributes if 'TextEmbeddingSignal' in attribute.signals.keys()])} attribute TextEmbeddings.")
         print(f"Document base has { len([attribute for attribute in document_base.attributes if 'ContextSentenceEmbeddingSignal' in attribute.signals.keys()])} attribute ContextSentenceEmbeddings.")
-        
-        with vectordb() as vb:
-            for i in utility.list_collections():
-                    utility.drop_collection(i)
+        print(f"Document base has {len([nugget for nugget in document_base.nuggets if 'CombinedEmbeddingSignal' in nugget.signals.keys()])} nugget combined Embeddings")
+        print(f"Combined Nugget has {len(document_base.nuggets[0][CombinedEmbeddingSignal])} Dimensions")
+        print(f"Adjusted Combined Nugget has {len(document_base.nuggets[0][AdjustedCombinedSignal])} Dimensions")
 
-            vb.extract_nuggets(document_base)
             
         with open("corona.bson", "wb") as file:
             file.write(document_base.to_bson())
+
+
 
 def compute_distances(
             xs,
@@ -496,9 +538,8 @@ def compute_embedding_distances_withoutVDB(path = "corona.bson"):
         distance_mat = compute_distances(document_base.nuggets, document_base.attributes)
     
     return time.time() - start_time ,distance_mat.size
+
+
 #generate_and_store_embedding('C:\\Users\\Pascal\\Desktop\\WannaDB\\lab23_wannadb_scale-up\\datasets\\corona\\raw-documents')
-
-    
-
-        
+ 
 #print(compute_embedding_distances_withoutVDB())

@@ -23,19 +23,20 @@ from wannadb.preprocessing.embedding import SBERTTextEmbedder, SBERTLabelEmbedde
 from wannadb.preprocessing.extraction import StanzaNERExtractor, SpacyNERExtractor
 from wannadb.preprocessing.label_paraphrasing import OntoNotesLabelParaphraser, SplitAttributeNameLabelParaphraser
 from wannadb.preprocessing.normalization import CopyNormalizer
-from wannadb.preprocessing.other_processing import ContextSentenceCacher
+from wannadb.preprocessing.other_processing import ContextSentenceCacher, CombineEmbedder
 from wannadb.resources import ResourceManager
 from wannadb.statistics import Statistics
 from wannadb.status import EmptyStatusCallback
 from wannadb.matching.distance import SignalsMeanDistance
+
 #import datasets.corona.corona as dataset
 from wannadb.data.signals import CachedDistanceSignal
-from wannadb.data.signals import CurrentMatchIndexSignal, CombinedEmbeddingSignal
+from wannadb.data.signals import CurrentMatchIndexSignal, CombinedEmbeddingSignal, AdjustedCombinedSignal, LabelEmbeddingSignal
 import cProfile, pstats, io
 from pstats import SortKey
 
 
-def test_extraction(path = "C:/Users/Pascal/Desktop\WannaDB/lab23_wannadb_scale-up/cache/exp-2-corona-preprocessed.bson"): 
+def test_extraction(path = "C:/Users/Pascal/Desktop\WannaDB/lab23_wannadb_scale-up/cache/corona.bson"): 
     pr = cProfile.Profile()
     #Experiment 1 - Vector database for CurrentMatchingIndex
 
@@ -45,28 +46,48 @@ def test_extraction(path = "C:/Users/Pascal/Desktop\WannaDB/lab23_wannadb_scale-
     if not document_base.validate_consistency():
         print("Document base is inconsistent!")
         return
+    
+    #print(document_base.nuggets[0][AdjustedCombinedSignal])
+    #print(len(document_base.nuggets[0][AdjustedCombinedSignal]))
+    #print(len(document_base.nuggets[0][CombinedEmbeddingSignal]))
 
     with vectordb() as vb:
         #times_per_attribute = []
         #vb.extract_nuggets(document_base)
 
-        collection = Collection('Embeddings')
+        collection = Collection('adjusted_embeddings')
+        print(f"Anzahl der Nuggets: {collection.num_entities}")
         collection.load()
+
+        '''
+        res = collection.query(
+            expr = "id == 0",
+            offset = 0,
+            limit = 100, 
+            output_fields = ["id", "document_id", "embedding_value"],
+            )
+        
+        print(res)
+        '''
 
         embedding_list = []
         attribute = document_base.attributes[0]
         for signal in vb._embedding_identifier:
             if  signal in attribute.signals:
                 embedding_list.append(attribute[signal])
-            else:
-                embedding_list.append(np.zeros(1024))
+                print(f"Attribute Signal1: {signal}")
 
         if len(embedding_list) > 0:
             combined_embedding =np.concatenate(embedding_list)
 
-        print(len(document_base.nuggets[0][CombinedEmbeddingSignal]))
-        print(len(combined_embedding))
+        print(f"Dimension nugget {len(document_base.nuggets[0][AdjustedCombinedSignal])}")
+        print(f"Dimension Combined Attribute: {len(combined_embedding)}")
 
+        print(f"Combined Attribute: {combined_embedding}")
+        print(f"LabelEmbedding Attribute: {attribute[LabelEmbeddingSignal]}")
+
+        print(f"Combined Nugget: {document_base.nuggets[0][AdjustedCombinedSignal]}")
+        print(f"LabelEmbedding Nugget: {document_base.nuggets[0][LabelEmbeddingSignal]}")
 
         result_docs = vb.compute_inital_distances(combined_embedding,document_base)
 
@@ -110,18 +131,6 @@ def test_extraction(path = "C:/Users/Pascal/Desktop\WannaDB/lab23_wannadb_scale-
 
         for i in remaining_documents:
             print(f"WithoutVDB - Nugget: {i[CurrentMatchIndexSignal]} Document: {i.name} Distance: {i.nuggets[i[CurrentMatchIndexSignal]][CachedDistanceSignal]}")
-
-        '''
-        target_embedding = document_base.nuggets[0][CombinedEmbeddingSignal]
-        re_doc = document_base.nuggets[0].document
-        remaining_docs = []
-        for id, i in enumerate(document_base.documents):
-            if i != re_doc:
-                remaining_docs.append(i)
-
-        print("Updating")
-        vb.updating_distances_documents(target_embedding= target_embedding, documents = remaining_docs, document_base=document_base)
-        '''
 
         collection.release()
 
