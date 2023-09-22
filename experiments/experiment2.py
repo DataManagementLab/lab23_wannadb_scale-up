@@ -113,6 +113,7 @@ if __name__ == "__main__":
                 statistics=statistics["preprocessing"]
             )
 
+
             # Relative path to the desired directory
             relative_path = "cache"
 
@@ -152,10 +153,10 @@ if __name__ == "__main__":
         ################################################################################################################
         # Load embeddings into vector database
         ################################################################################################################
-
+        
         #with vectordb() as vdb:
-        # vdb.extract_nuggets(document_base)
-
+            #vdb.extract_nuggets(document_base)
+        
 
         ################################################################################################################
         # matching phase
@@ -165,19 +166,25 @@ if __name__ == "__main__":
             statistics["matching"]["results"]["considered_as_match"][attribute_name] = set()
 
         # random seeds have been randomly chosen once from [0, 1000000]
-        # random_seeds = [200488, 422329, 449756, 739608, 983889, 836016, 264198, 908457, 205619, 461905]
-        random_seeds = [794009, 287762, 880883, 663238, 137616, 543468, 329177, 322737, 343909, 824474, 220481,
-                        832096,
-                        962731, 345784, 317557, 696622, 675696, 467273, 475463, 540128]
+        random_seeds = [200488, 422329, 449756, 739608, 983889, 836016, 264198, 908457, 205619, 461905]
+        #random_seeds = [794009, 287762, 880883, 663238, 137616, 543468, 329177, 322737, 343909, 824474, 220481,
+        #               832096,
+        #                962731, 345784, 317557, 696622, 675696, 467273, 475463, 540128]
+        
+        for i in document_base.documents:
+            print(i.index)
 
         pr = cProfile.Profile()
         pr.enable()
 
+        
         with vectordb() as vb:
             full_collection = Collection("full_embeddings")
             adjusted_collection = Collection("adjusted_embeddings")
             full_collection.load()
             adjusted_collection.load()
+        
+
             for run, random_seed in enumerate(random_seeds):
                 print("\n\n\nExecuting run {}.".format(run + 1))
 
@@ -186,6 +193,7 @@ if __name__ == "__main__":
                 with open(path, "rb") as file:
                     document_base = DocumentBase.from_bson(file.read())
 
+                
                 wannadb_pipeline = Pipeline(
                     [
                         ContextSentenceCacher(),
@@ -220,33 +228,33 @@ if __name__ == "__main__":
 
                 '''
                 wannadb_pipeline = Pipeline([
-                    ContextSentenceCacher(),
-                    RankingBasedMatcher(
-                        distance=SignalsMeanDistance(
-                            signal_identifiers=[
-                                "LabelEmbeddingSignal",
-                                "TextEmbeddingSignal",
-                                "ContextSentenceEmbeddingSignal"
+                ContextSentenceCacher(),
+                RankingBasedMatcher(
+                    distance=SignalsMeanDistance(
+                        signal_identifiers=[
+                            "LabelEmbeddingSignal",
+                            "TextEmbeddingSignal",
+                            "ContextSentenceEmbeddingSignal"
+                        ]
+                    ),
+                    max_num_feedback=10,
+                    len_ranked_list=10,
+                    max_distance=0.2,  
+                    num_random_docs=1,
+                    sampling_mode="AT_MAX_DISTANCE_THRESHOLD",  
+                    adjust_threshold=True,
+                    nugget_pipeline=Pipeline(
+                            [
+                                ContextSentenceCacher(),
+                                CopyNormalizer(),
+                                OntoNotesLabelParaphraser(),
+                                SplitAttributeNameLabelParaphraser(do_lowercase=True, splitters=[" ", "_"]),
+                                SBERTTextEmbedder("SBERTBertLargeNliMeanTokensResource"),
                             ]
-                        ),
-                        max_num_feedback=10,
-                        len_ranked_list=10,
-                        max_distance=0.2,  
-                        num_random_docs=1,
-                        sampling_mode="AT_MAX_DISTANCE_THRESHOLD",  
-                        adjust_threshold=True,
-                        nugget_pipeline=Pipeline(
-                                [
-                                    ContextSentenceCacher(),
-                                    CopyNormalizer(),
-                                    OntoNotesLabelParaphraser(),
-                                    SplitAttributeNameLabelParaphraser(do_lowercase=True, splitters=[" ", "_"]),
-                                    SBERTTextEmbedder("SBERTBertLargeNliMeanTokensResource"),
-                                ]
-                            )
-                    )
+                        )
+                )
                 ])
-                '''          
+                '''      
 
                 statistics["matching"]["config"] = wannadb_pipeline.to_config()
 
@@ -268,51 +276,51 @@ if __name__ == "__main__":
 
                 logger.setLevel(logging.INFO)
 
-            # evaluate the matching process
-            for attribute, attribute_name in zip(dataset.ATTRIBUTES, user_attribute_names):
-                results = statistics["matching"]["runs"][str(run)]["results"][attribute]
-                results["num_should_be_filled_is_empty"] = 0
-                results["num_should_be_filled_is_correct"] = 0
-                results["num_should_be_filled_is_incorrect"] = 0
-                results["num_should_be_empty_is_empty"] = 0
-                results["num_should_be_empty_is_full"] = 0
+                # evaluate the matching process
+                for attribute, attribute_name in zip(dataset.ATTRIBUTES, user_attribute_names):
+                    results = statistics["matching"]["runs"][str(run)]["results"][attribute]
+                    results["num_should_be_filled_is_empty"] = 0
+                    results["num_should_be_filled_is_correct"] = 0
+                    results["num_should_be_filled_is_incorrect"] = 0
+                    results["num_should_be_empty_is_empty"] = 0
+                    results["num_should_be_empty_is_full"] = 0
 
-                for document, wannadb_document in zip(documents, document_base.documents):
-                    found_nuggets = []
-                    if attribute_name in wannadb_document.attribute_mappings.keys():
-                        found_nuggets = wannadb_document.attribute_mappings[attribute_name]
+                    for document, wannadb_document in zip(documents, document_base.documents):
+                        found_nuggets = []
+                        if attribute_name in wannadb_document.attribute_mappings.keys():
+                            found_nuggets = wannadb_document.attribute_mappings[attribute_name]
 
-                    if document["mentions"][attribute]:  # document states cell's value
-                        if not found_nuggets:
-                            results["num_should_be_filled_is_empty"] += 1
-                        else:
-                            found_nugget = found_nuggets[0]  # TODO: only considers the first found nugget
-                            for mention in document["mentions"][
-                                attribute]:  # + document["mentions_same_attribute_class"][attribute]
-                                if consider_overlap_as_match(mention["start_char"], mention["end_char"],
-                                                             found_nugget.start_char, found_nugget.end_char):
-                                    results["num_should_be_filled_is_correct"] += 1
-                                    break
+                        if document["mentions"][attribute]:  # document states cell's value
+                            if not found_nuggets:
+                                results["num_should_be_filled_is_empty"] += 1
                             else:
-                                results["num_should_be_filled_is_incorrect"] += 1
+                                found_nugget = found_nuggets[0]  # TODO: only considers the first found nugget
+                                for mention in document["mentions"][
+                                    attribute]:  # + document["mentions_same_attribute_class"][attribute]
+                                    if consider_overlap_as_match(mention["start_char"], mention["end_char"],
+                                                                found_nugget.start_char, found_nugget.end_char):
+                                        results["num_should_be_filled_is_correct"] += 1
+                                        break
+                                else:
+                                    results["num_should_be_filled_is_incorrect"] += 1
 
-                    else:  # document does not state cell's value
-                        if found_nuggets == []:
-                            results["num_should_be_empty_is_empty"] += 1
-                        else:
-                            results["num_should_be_empty_is_full"] += 1
+                        else:  # document does not state cell's value
+                            if found_nuggets == []:
+                                results["num_should_be_empty_is_empty"] += 1
+                            else:
+                                results["num_should_be_empty_is_full"] += 1
 
-                # compute the evaluation metrics
-                calculate_f1_scores(results)
+                    # compute the evaluation metrics
+                    calculate_f1_scores(results)
 
-            # compute Macro F1 over dataset:
-            attribute_f1_scores = []
-            for attribute in dataset.ATTRIBUTES:
-                calculate_f1_scores(statistics["matching"]["runs"][str(run)]["results"][attribute])
-                attribute_f1_scores.append(
-                    statistics["matching"]["runs"][str(run)]["results"][attribute]["f1_score"])
-            results = statistics["matching"]["runs"][str(run)]["results"]["macro_f1"] = np.mean(attribute_f1_scores)
-            print("F1 Score: ", np.mean(attribute_f1_scores))
+                # compute Macro F1 over dataset:
+                attribute_f1_scores = []
+                for attribute in dataset.ATTRIBUTES:
+                    calculate_f1_scores(statistics["matching"]["runs"][str(run)]["results"][attribute])
+                    attribute_f1_scores.append(
+                        statistics["matching"]["runs"][str(run)]["results"][attribute]["f1_score"])
+                results = statistics["matching"]["runs"][str(run)]["results"]["macro_f1"] = np.mean(attribute_f1_scores)
+                print("F1 Score: ", np.mean(attribute_f1_scores))
 
         pr.disable()
         s = io.StringIO()
@@ -320,7 +328,7 @@ if __name__ == "__main__":
         ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
         ps.print_stats()
         print(s.getvalue())
-        with open('automatch_vdb.txt', 'w+') as f:
+        with open('automatch_vdb_lle.txt', 'w+') as f:
             f.write(s.getvalue()) 
 
         # compute the results as the median

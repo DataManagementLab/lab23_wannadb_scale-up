@@ -208,7 +208,7 @@ class Document:
     to be set for every document.
     """
 
-    def __init__(self, name: str, text: str) -> None:
+    def __init__(self, name: str, text: str, index: int = None) -> None:
         """
         Initialize the Document.
 
@@ -217,7 +217,7 @@ class Document:
         """
         self._name: str = name
         self._text: str = text
-        self._index: int = -1
+        self._index: int = index
 
         self._nuggets: List[InformationNugget] = []
         self._attribute_mappings: Dict[str, List[InformationNugget]] = {}
@@ -304,7 +304,8 @@ class Document:
     def set_index(self, index: int) -> None:
         self._index = index
 
-    def get_index(self) -> int:
+    @property
+    def index(self) -> int:
         return self._index
 
 
@@ -325,6 +326,8 @@ class DocumentBase:
         """
         self._documents: List[Document] = documents
         self._attributes: List[Attribute] = attributes
+        for id,i in enumerate(documents):
+            i.set_index(id)
 
     def __str__(self) -> str:
         return f"({len(self._documents)} documents, {len(self.nuggets)} nuggets, {len(self._attributes)} attributes)"
@@ -566,6 +569,7 @@ class DocumentBase:
             serializable_document: Dict[str, Any] = {
                 "name": document.name,
                 "text": document.text,
+                "index" : document.index,
                 "nuggets": [],
                 "attribute_mappings": {},
                 "signals": {}
@@ -646,7 +650,7 @@ class DocumentBase:
         logger.info("Deserialize documents.")
         for serialized_document in serialized_base["documents"]:
             # deserialize the document
-            document: Document = Document(name=serialized_document["name"], text=serialized_document["text"])
+            document: Document = Document(name=serialized_document["name"], index = serialized_document["index"],text=serialized_document["text"])
 
             for serialized_nugget in serialized_document["nuggets"]:
                 # deserialize the nugget

@@ -36,7 +36,7 @@ import cProfile, pstats, io
 from pstats import SortKey
 
 
-def test_extraction(path = "C:/Users/Pascal/Desktop\WannaDB/lab23_wannadb_scale-up/cache/corona.bson"): 
+def test_extraction(path = "C:/Users/Pascal/Desktop\WannaDB/lab23_wannadb_scale-up/cache/exp-2-corona-preprocessed.bson"): 
     pr = cProfile.Profile()
     #Experiment 1 - Vector database for CurrentMatchingIndex
 
@@ -46,46 +46,39 @@ def test_extraction(path = "C:/Users/Pascal/Desktop\WannaDB/lab23_wannadb_scale-
     if not document_base.validate_consistency():
         print("Document base is inconsistent!")
         return
-    
-    #print(document_base.nuggets[0][AdjustedCombinedSignal])
-    #print(len(document_base.nuggets[0][AdjustedCombinedSignal]))
-    #print(len(document_base.nuggets[0][CombinedEmbeddingSignal]))
 
     with vectordb() as vb:
         #times_per_attribute = []
-        #vb.extract_nuggets(document_base)
+        vb.extract_nuggets(document_base)
 
-        collection = Collection('adjusted_embeddings')
-        print(f"Anzahl der Nuggets: {collection.num_entities}")
-        collection.load()
+        adjusted_collection = Collection('adjusted_embeddings')
+        full_collection = Collection('full_embeddings')
+        print(f"Anzahl der Nuggets: {adjusted_collection.num_entities}")
+        adjusted_collection.load()
+        full_collection.load()
 
         embedding_list = []
         attribute = document_base.attributes[0]
+        sample_nugget= document_base.nuggets[0]
         for signal in vb._embedding_identifier:
-            if  signal in attribute.signals:
+            if  (signal in attribute.signals) and (signal in sample_nugget.signals):
                 embedding_list.append(attribute[signal])
-                print(f"Attribute Signal1: {signal}")
+                print(f"Attribute Signal: {signal}")
 
         if len(embedding_list) > 0:
             combined_embedding =np.concatenate(embedding_list)
 
-        embedding_list = []
-        attribute = document_base.attributes[0]
-        for signal in vb._embedding_identifier:
-            if  signal in attribute.signals:
-                embedding_list.append(attribute[signal])
-                print(f"Attribute Signal1: {signal}")
-
-        if len(embedding_list) > 0:
-            combined_embedding =np.concatenate(embedding_list)
 
         result_docs = vb.compute_inital_distances(combined_embedding,document_base)
         
-
-        #print([i[CurrentMatchIndexSignal] for i in result_docs])
-
         for i in result_docs:
           print(f"Nugget: {i[CurrentMatchIndexSignal]} Document: {i.name} Distance: {i.nuggets[i[CurrentMatchIndexSignal]][CachedDistanceSignal]}")
+
+
+        target_embedding = result_docs[0].nuggets[result_docs[0][CurrentMatchIndexSignal]][CombinedEmbeddingSignal]
+
+
+        vb.updating_distances_documents(target_embedding, result_docs, document_base)
 
 
         with open(path, "rb") as file:
@@ -95,8 +88,6 @@ def test_extraction(path = "C:/Users/Pascal/Desktop\WannaDB/lab23_wannadb_scale-
             print("Document base is inconsistent!")
             return
     
-        for id,i in enumerate(document_base.documents):
-            i.set_index(id)
 
         remaining_documents = []
         statistics = Statistics(do_collect=True)
@@ -123,7 +114,7 @@ def test_extraction(path = "C:/Users/Pascal/Desktop\WannaDB/lab23_wannadb_scale-
         for i in remaining_documents:
             print(f"WithoutVDB - Nugget: {i[CurrentMatchIndexSignal]} Document: {i.name} Distance: {i.nuggets[i[CurrentMatchIndexSignal]][CachedDistanceSignal]}")
 
-        collection.release()
+        adjusted_collection.release()
 
             
 
