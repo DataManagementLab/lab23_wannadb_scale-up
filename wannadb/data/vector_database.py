@@ -65,15 +65,18 @@ class vectordb:
         self._already_initialized = True
 
         # Nugget schema
-        self._id = FieldSchema(
-            name="id",
+        self._dbid =FieldSchema(
+            name="dbid",
             dtype=DataType.INT64,
             is_primary=True,
         )
+        self._id = FieldSchema(
+            name="id",
+            dtype=DataType.INT64,
+        )
         self._document_id = FieldSchema(
             name="document_id",
-            dtype=DataType.INT64,
-            max_length = 200
+            dtype=DataType.INT64
         )
         self._embedding_value = FieldSchema( 
             name="embedding_value",
@@ -81,7 +84,7 @@ class vectordb:
             dim=1024*3,
         )
         self._embbeding_schema = CollectionSchema(
-            fields=[self._id, self._document_id, self._embedding_value],
+            fields=[self._dbid,self._id, self._document_id, self._embedding_value],
             description="Schema for nuggets",
             enable_dynamic_field=True,
         )
@@ -90,13 +93,15 @@ class vectordb:
         # vector index params
         self._index_params = {
         "metric_type":"COSINE",
-        "index_type":"FLAT"
+        "index_type":"IVF_SQ8",
+        "params":{"nlist":1024}
         }
 
         self._search_params = {
         "metric_type": "COSINE", 
         "offset": 0, 
         "ignore_growing": False, 
+        "params": {"nprobe": 50}
         }
 
 
@@ -143,10 +148,8 @@ class vectordb:
             dim=1024*required_dim,
             )
 
-            print(f"Required_dim: {required_dim}")
-
             adjusted_embbeding_schema = CollectionSchema(
-            fields=[self._id, self._document_id, adjusted_embedding_value],
+            fields=[self._dbid,self._id, self._document_id, adjusted_embedding_value],
             description="Schema for nuggets",
             enable_dynamic_field=True,
             )
@@ -159,36 +162,8 @@ class vectordb:
                 )
             logger.info("Created collection Embeddings")
 
-        logger.info("Start extracting nuggets from document base")
         full_collection = Collection("full_embeddings")
         adjusted_collection = Collection("adjusted_embeddings")
-        for doc_id, document in enumerate(documentBase.documents):
-                document.set_index(doc_id)
-                for id,nugget in enumerate(document.nuggets):
-
-                    combined_embedding = nugget[CombinedEmbeddingSignal]
-                    print(f"Dim full embedding: {len(combined_embedding)}")
-                    data = [
-                        [id],
-                        [doc_id],
-                        [combined_embedding],     
-                        ]
-                    full_collection.insert(data)
-                    logger.info(f"Inserted nugget {id} {combined_embedding} from document {document.name} into full_collection")
-
-                    adjusted_combined_embedding = nugget[AdjustedCombinedSignal]
-                    print(f"Dimension Nugget: {len(nugget[AdjustedCombinedSignal])}")
-                    data = [
-                        [id],
-                        [doc_id],
-                        [adjusted_combined_embedding],     
-                        ]
-                    adjusted_collection.insert(data)
-                    logger.info(f"Inserted nugget {id} {adjusted_combined_embedding} from document {document.name} into adjusted_collection")
-
-                full_collection.flush()
-                adjusted_collection.flush()
-        logger.info("Embedding insertion finished")
 
         #Vector index
         logger.info("Start indexing")
@@ -204,6 +179,44 @@ class vectordb:
         logger.info("Indexing finished")
         logger.info("Extraction finished")
 
+        logger.info("Start extracting nuggets from document base")
+        full_collection.load()
+        adjusted_collection.load()
+        dbid_counter = 0
+        for doc_id, document in enumerate(documentBase.documents):
+                document.set_index(doc_id)
+                for id,nugget in enumerate(document.nuggets):
+
+                    combined_embedding = nugget[CombinedEmbeddingSignal]
+                    print(f"Dim full embedding: {len(combined_embedding)}")
+                    data = [
+                        [dbid_counter],
+                        [id],
+                        [doc_id],
+                        [combined_embedding],     
+                        ]
+                    full_collection.insert(data)
+                    logger.info(f"Inserted nugget {id} {combined_embedding} from document {document.name} into full_collection")
+
+                    adjusted_combined_embedding = nugget[AdjustedCombinedSignal]
+                    print(f"Dimension Nugget: {len(nugget[AdjustedCombinedSignal])}")
+                    data = [
+                        [dbid_counter],
+                        [id],
+                        [doc_id],
+                        [adjusted_combined_embedding],     
+                        ]
+                    adjusted_collection.insert(data)
+                    logger.info(f"Inserted nugget {id} {adjusted_combined_embedding} from document {document.name} into adjusted_collection")
+                    dbid_counter = dbid_counter+1
+
+                full_collection.flush()
+                adjusted_collection.flush()
+        logger.info("Embedding insertion finished")
+        full_collection.release()
+        adjusted_collection.release()
+
+
     def compute_inital_distances(self, attribute_embedding : List[float], document_base: DocumentBase) -> List[Document]:
 
         remaining_documents: List[Document] = []
@@ -213,19 +226,19 @@ class vectordb:
             data=[attribute_embedding], 
             anns_field="embedding_value", 
             param=self._search_params,
-            limit=1,
+            limit=200,
             expr= None,
             output_fields=['id','document_id'],
             consistency_level="Strong"
         )
 
-
+        print(results[0])
         for i in results[0]:
             #print(f"Result[i]: f{i}")
             
             current_document = document_base.documents[i.entity.get('document_id')]
             if not current_document in remaining_documents:
-                current_nugget = i.id
+                current_nugget = i.entity.get('id')
 
                 current_document[CurrentMatchIndexSignal] = CurrentMatchIndexSignal(current_nugget)
                 print(f"Computed Distance: {i.distance}")
@@ -264,7 +277,7 @@ class vectordb:
 
             if not current_document in processed:
                 #print(F"Not already processed")
-                current_nugget = i.id
+                current_nugget = i.entity.get('id')
                 #print(f"Current Nugget: {current_nugget}")
                 if 'CurrentMatchIndexSignal' in current_document.signals:
                     #print(f"Document: {current_document.name} contains CurrentMatchIndex: {current_document[CurrentMatchIndexSignal]}")

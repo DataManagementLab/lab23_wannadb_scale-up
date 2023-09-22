@@ -101,7 +101,6 @@ if __name__ == "__main__":
                 SBERTLabelEmbedder("SBERTBertLargeNliMeanTokensResource"),
                 SBERTTextEmbedder("SBERTBertLargeNliMeanTokensResource"),
                 BERTContextSentenceEmbedder("BertLargeCasedResource"),
-                RelativePositionEmbedder(),
                 CombineEmbedder()
             ])
 
@@ -153,12 +152,10 @@ if __name__ == "__main__":
         ################################################################################################################
         # Load embeddings into vector database
         ################################################################################################################
-        '''
-        with vectordb() as vdb:
-          vdb.extract_nuggets(document_base)
-          collection = Collection("Embeddings")
-          print(f"Amount of nuggets loaded into vector db: {collection.num_entities}")
-        '''
+
+        #with vectordb() as vdb:
+        # vdb.extract_nuggets(document_base)
+
 
         ################################################################################################################
         # matching phase
@@ -177,8 +174,10 @@ if __name__ == "__main__":
         pr.enable()
 
         with vectordb() as vb:
-            collection = Collection("Embeddings")
-            collection.load()
+            full_collection = Collection("full_embeddings")
+            adjusted_collection = Collection("adjusted_embeddings")
+            full_collection.load()
+            adjusted_collection.load()
             for run, random_seed in enumerate(random_seeds):
                 print("\n\n\nExecuting run {}.".format(run + 1))
 
@@ -186,9 +185,6 @@ if __name__ == "__main__":
                 path = os.path.join(os.path.dirname(__file__), "..", "cache", f"exp-2-{dataset.NAME}-preprocessed.bson")
                 with open(path, "rb") as file:
                     document_base = DocumentBase.from_bson(file.read())
-
-                collection = Collection("Embeddings")
-                collection.load()
 
                 wannadb_pipeline = Pipeline(
                     [
@@ -250,8 +246,7 @@ if __name__ == "__main__":
                             )
                     )
                 ])
-                '''
-                
+                '''          
 
                 statistics["matching"]["config"] = wannadb_pipeline.to_config()
 
@@ -259,8 +254,6 @@ if __name__ == "__main__":
                 random.seed(random_seed)
 
                 logger.setLevel(logging.WARN)
-
-
 
                 wannadb_pipeline(
                 document_base=document_base,
@@ -327,7 +320,7 @@ if __name__ == "__main__":
         ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
         ps.print_stats()
         print(s.getvalue())
-        with open('automatch_withoutvdb.txt', 'w+') as f:
+        with open('automatch_vdb.txt', 'w+') as f:
             f.write(s.getvalue()) 
 
         # compute the results as the median

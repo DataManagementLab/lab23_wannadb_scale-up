@@ -530,11 +530,6 @@ class RankingBasedMatcherVDB(BaseMatcher):
         statistics["num_documents"] = len(document_base.documents)
         statistics["num_nuggets"] = len(document_base.nuggets)
 
-
-        pr = cProfile.Profile()
-        pr.enable()
-
-        logger.info("Start Rankinggggggggggggggggggggggggggggggggggggggg")
         for attribute in document_base.attributes:
 
             if not isinstance(interaction_callback, AutomaticRandomRankingBasedMatchingFeedback):
@@ -567,14 +562,13 @@ class RankingBasedMatcherVDB(BaseMatcher):
             signals = ['LabelEmbeddingSignal', 'TextEmbeddingSignal', 'ContextSentenceEmbeddingSignal']
 
             embedding_list = []
+            sample_nugget = document_base.nuggets[0]
+
             for signal in signals:
-                if signal in self._embedding_identifier and signal in attribute.signals:
+                if signal in self._embedding_identifier and signal in attribute.signals and signal in sample_nugget.signals:
                     embedding_list.append(attribute[signal])
                     logger.info(f"{signal} for attribute: {attribute[signal]}")
-                else:
-                    embedding_list.append(np.zeros(1024))
-
-
+                
             if len(embedding_list) > 0:
                 combined_embedding =np.concatenate(embedding_list)
                 logger.info(f"Combined embedding: {combined_embedding}")
@@ -833,14 +827,6 @@ class RankingBasedMatcherVDB(BaseMatcher):
             tak: float = time.time()
             logger.info(f"Updated remaining documents in {tak - tik} seconds.")
 
-        pr.disable()
-        s = io.StringIO()
-        sortby = SortKey.CUMULATIVE
-        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-        ps.print_stats()
-        print(s.getvalue())
-        with open('old_current_match.txt', 'w+') as f:
-            f.write(s.getvalue()) 
 
     def to_config(self) -> Dict[str, Any]:
         return {

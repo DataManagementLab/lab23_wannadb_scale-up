@@ -59,16 +59,15 @@ def test_extraction(path = "C:/Users/Pascal/Desktop\WannaDB/lab23_wannadb_scale-
         print(f"Anzahl der Nuggets: {collection.num_entities}")
         collection.load()
 
-        '''
-        res = collection.query(
-            expr = "id == 0",
-            offset = 0,
-            limit = 100, 
-            output_fields = ["id", "document_id", "embedding_value"],
-            )
-        
-        print(res)
-        '''
+        embedding_list = []
+        attribute = document_base.attributes[0]
+        for signal in vb._embedding_identifier:
+            if  signal in attribute.signals:
+                embedding_list.append(attribute[signal])
+                print(f"Attribute Signal1: {signal}")
+
+        if len(embedding_list) > 0:
+            combined_embedding =np.concatenate(embedding_list)
 
         embedding_list = []
         attribute = document_base.attributes[0]
@@ -80,16 +79,8 @@ def test_extraction(path = "C:/Users/Pascal/Desktop\WannaDB/lab23_wannadb_scale-
         if len(embedding_list) > 0:
             combined_embedding =np.concatenate(embedding_list)
 
-        print(f"Dimension nugget {len(document_base.nuggets[0][AdjustedCombinedSignal])}")
-        print(f"Dimension Combined Attribute: {len(combined_embedding)}")
-
-        print(f"Combined Attribute: {combined_embedding}")
-        print(f"LabelEmbedding Attribute: {attribute[LabelEmbeddingSignal]}")
-
-        print(f"Combined Nugget: {document_base.nuggets[0][AdjustedCombinedSignal]}")
-        print(f"LabelEmbedding Nugget: {document_base.nuggets[0][LabelEmbeddingSignal]}")
-
         result_docs = vb.compute_inital_distances(combined_embedding,document_base)
+        
 
         #print([i[CurrentMatchIndexSignal] for i in result_docs])
 
@@ -137,3 +128,70 @@ def test_extraction(path = "C:/Users/Pascal/Desktop\WannaDB/lab23_wannadb_scale-
             
 
 test_extraction()
+
+
+
+'''
+        res = collection.query(
+            expr = "dbid  == 0",
+            offset = 0,
+            limit = 10, 
+            output_fields = ["id", "document_id", "embedding_value"],
+            )
+        
+        print(len(res))
+        print(res[0])
+        vbd_value=res[0]['embedding_value']
+        sec_value = document_base.nuggets[0][AdjustedCombinedSignal]
+
+        def vectors_are_equal(vector1, vector2):
+            # Überprüfe, ob die Längen der Vektoren gleich sind
+            if len(vector1) != len(vector2):
+                return False
+            
+            # Vergleiche die Elemente der Vektoren
+            for i in range(len(vector1)):
+                if vector1[i] != vector2[i]:
+                    return False
+            
+            # Wenn alle Elemente übereinstimmen, gib True zurück
+            return True
+
+        print(vectors_are_equal(vbd_value, sec_value))  # True, weil beide Vektoren übereinstimmen
+
+        from sklearn.metrics.pairwise import cosine_distances
+        import numpy as np
+
+
+
+
+        embedding_list = []
+        attribute = document_base.attributes[0]
+        for signal in vb._embedding_identifier:
+            if  signal in attribute.signals:
+                embedding_list.append(attribute[signal])
+                print(f"Attribute Signal1: {signal}")
+
+        if len(embedding_list) > 0:
+            combined_embedding =np.concatenate(embedding_list)
+
+              # Um die Cosine-Distanz zu berechnen, müssen die Vektoren als Zeilen in einer Matrix vorliegen.
+        # Wir können reshape verwenden, um sie in die richtige Form zu bringen.
+        matrix = np.vstack((combined_embedding, vbd_value))
+
+        # Cosine-Distanz berechnen
+        cosine_distance = cosine_distances(matrix)
+
+        # Der Wert cosine_distance[0, 1] enthält die Cosine-Distanz zwischen vector_a und vector_b
+        print("Cosine-Distanz zwischen VDB value:", cosine_distance[0, 1])
+
+        
+        print(f"Dimension nugget {len(document_base.nuggets[0][AdjustedCombinedSignal])}")
+        print(f"Dimension Combined Attribute: {len(combined_embedding)}")
+
+        print(f"Combined Attribute: {combined_embedding}")
+        print(f"LabelEmbedding Attribute: {attribute[LabelEmbeddingSignal]}")
+
+        print(f"Combined Nugget: {document_base.nuggets[0][AdjustedCombinedSignal]}")
+        print(f"LabelEmbedding Nugget: {document_base.nuggets[0][LabelEmbeddingSignal]}")
+        '''
