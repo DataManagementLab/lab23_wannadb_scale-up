@@ -58,8 +58,6 @@ class vectordb:
         self._port = 19530
         self._embedding_identifier = ['LabelEmbeddingSignal', 'TextEmbeddingSignal', 'ContextSentenceEmbeddingSignal']
         self._embedding_collection = None
-        self._n_dim = 0
-        self._model={}
 
         logger.info("Vector database initialized")
 
@@ -85,7 +83,6 @@ class vectordb:
             dim=1024*3,
             )
 
-
         # vector index params
         self._index_params = {
         "metric_type":"COSINE",
@@ -102,25 +99,11 @@ class vectordb:
         logger.info("Connecting to vector database")
         connections.connect(alias='default',host=self._host, port=self._port)
         return self 
- 
-        
+   
 
     def __exit__(self, *args) -> None:
         logger.info("Disconnecting from vector database")
         connections.disconnect(alias='default')
-
-    
-    def get_ndim(self, documentBase: DocumentBase):
-        sample_attribute = documentBase.attributes[0]
-        sample_nugget = documentBase.nuggets[0]
-
-        n_dim = 0
-        for signal in self._embedding_identifier:
-            if (signal in sample_nugget.signals) and (signal in sample_attribute.signals):
-                n_dim= n_dim+1
-
-        self._n_dim = n_dim
-        return self._n_dim
     
     def setup_vdb(self, documentBase: DocumentBase, model: str = None) -> None:
 
@@ -131,98 +114,33 @@ class vectordb:
             Collection(collection).drop()
             logger.info(f'Collection {collection} has been deleted.')
 
-
-        #Determine dimension size of nugget to attribute collection
-        self._n_dim = self.get_ndim(documentBase)
-        
-        #Check if model for dimensionality reduction or increase should be used
-        if model is not None:
-            if model not in ['increase','decrease']:
-                raise ValueError(f"model = {model} is not valid!")
-            else:
-                if model == 'increase':
-                    try:
-                        with open(f"increase_autoencoder_{1024*self._n_dim}ndim.pkl", "rb") as file:
-                            self._model = pickle.load(file)
-
-                            self._embedding_value= FieldSchema( 
-                                name="embedding_value",
-                                dtype=DataType.FLOAT_VECTOR,
-                                dim=1024*3,
-                                )
-                
-                    except FileNotFoundError:
-                        raise FileNotFoundError(f"Please train and save a model!")
-                else:
-                    try:
-                        with open('reduction_lle.pkl', "rb") as file:
-                            self._model = pickle.load(file)
-
-                            self._embedding_value = FieldSchema( 
-                                name="embedding_value",
-                                dtype=DataType.FLOAT_VECTOR,
-                                dim=1024*self._n_dim,
-                                )
+        self._embedding_value = FieldSchema( 
+            name="embedding_value",
+            dtype=DataType.FLOAT_VECTOR,
+            dim=1024*len(self._embedding_identifier),
+            )
                             
-                    except FileNotFoundError:
-                        raise FileNotFoundError(f"Please train and save a model!")
-                    
-                adjusted_embbeding_schema = CollectionSchema(
-                                fields=[self._dbid,self._id, self._document_id, self._embedding_value],
-                                description="Schema for nuggets",
-                                enable_dynamic_field=True,
-                                )
-                    
-        else:
-            adjusted_embedding_value = FieldSchema( 
-                                name="embedding_value",
-                                dtype=DataType.FLOAT_VECTOR,
-                                dim=1024*self._n_dim,
-                                )
-            
-            adjusted_embbeding_schema = CollectionSchema(
-                                fields=[self._dbid,self._id, self._document_id, adjusted_embedding_value],
-                                description="Schema for nuggets",
-                                enable_dynamic_field=True,
-                                )
-                            
-        full_embbeding_schema = CollectionSchema(
+        embbeding_schema = CollectionSchema(
                             fields=[self._dbid,self._id, self._document_id, self._embedding_value],
                             description="Schema for nuggets",
                             enable_dynamic_field=True,
                             )
         
-        full_collection = Collection(
-                    name="full_embeddings",
-                    schema=full_embbeding_schema,
+        collection = Collection(
+                    name="embeddings",
+                    schema=embbeding_schema,
                     using="default",
                     shards_num=1,
                 )
-        logger.info("Created full collection")
-
-        adjusted_collection = Collection(
-                    name="adjusted_embeddings",
-                    schema=adjusted_embbeding_schema,
-                    using="default",
-                    shards_num=1,
-                )
-        logger.info("Created adjusted_collection")
-
-        full_collection = Collection("full_embeddings")
-        adjusted_collection = Collection("adjusted_embeddings")
+        logger.info("Created embedding collection")
+        collection = Collection("embeddings")
 
         #Vector index
         logger.info("Start indexing")
-        full_collection.create_index(
+        collection.create_index(
             field_name='embedding_value', 
             index_params=self._index_params
             )   
-        
-        adjusted_collection.create_index(
-            field_name='embedding_value', 
-            index_params=self._index_params
-            )  
-    
         logger.info("Indexing finished")
 
 
@@ -232,12 +150,10 @@ class vectordb:
         """
         self.setup_vdb(documentBase,model)
 
-        full_collection = Collection('full_embeddings')
-        adjusted_collection = Collection('adjusted_embeddings')
+        collection = Collection('embeddings')
 
         logger.info("Start extracting nuggets from document base")
-        full_collection.load()
-        adjusted_collection.load()
+        collection.load()
 
         dbid_counter = 0
         for doc_id, document in enumerate(documentBase.documents):
@@ -246,64 +162,61 @@ class vectordb:
                     combined_embedding = nugget[CombinedEmbeddingSignal]
                     combined_embedding = normalize(combined_embedding.reshape(1,-1),norm='l2')
 
-                    if model == 'reduction':
-                        combined_embedding = self._model['reduction'].transform(combined_embedding)
-
                     data = [
                         [dbid_counter],
                         [id],
                         [doc_id],
                         combined_embedding,     
                         ]
-                    full_collection.insert(data)
-
-                    combined_embedding = nugget[AdjustedCombinedSignal]
-                    combined_embedding = normalize(combined_embedding.reshape(1,-1),norm='l2')
-
-                    if model == 'increase':
-                        combined_embedding = nugget[CombinedEmbeddingSignal]
-                        combined_embedding = normalize(combined_embedding.reshape(1,-1),norm='l2')
-                    else:
-                        combined_embedding = nugget[AdjustedCombinedSignal]
-                        combined_embedding = normalize(combined_embedding.reshape(1,-1),norm='l2')
-
-                    data = [
-                        [dbid_counter],
-                        [id],
-                        [doc_id],
-                        combined_embedding,     
-                        ]
-                    adjusted_collection.insert(data)
+                    collection.insert(data)
 
                     logger.info(f"Inserted nugget {id} {combined_embedding} from document {document.name} into full_collection")
                     dbid_counter = dbid_counter+1
 
-                full_collection.flush()
-                adjusted_collection.flush()
+                collection.flush()
 
         logger.info("Embedding insertion finished")
-        full_collection.release()
-        adjusted_collection.release()
+        collection.release()
 
 
     def compute_inital_distances(self, attribute_embedding : List[float], document_base: DocumentBase) -> List[Document]:
         attribute_embedding = normalize(attribute_embedding.reshape(1,-1),norm='l2')
-
-        if len(self._model) > 0 and self._model[0] == 'increase':
-            attribute_embedding= self._model['increase'].transform(attribute_embedding)
-
         remaining_documents: List[Document] = []
-        adjusted_collection = Collection('adjusted_embeddings')
+        collection = Collection('embeddings')
+
+        #Determine Limit
+        search_limit = len(document_base.documents)*20
+
+        if search_limit < 16384:
  
-        results = adjusted_collection.search(
-            data=attribute_embedding, 
-            anns_field="embedding_value", 
-            param=self._search_params,
-            limit=2000,
-            expr= None,
-            output_fields=['id','document_id'],
-            consistency_level="Strong"
-        )
+            results = collection.search(
+                data=attribute_embedding, 
+                anns_field="embedding_value", 
+                param=self._search_params,
+                limit=search_limit,
+                expr= None,
+                output_fields=['id','document_id'],
+                consistency_level="Strong"
+            )
+        else:
+            results=[]
+            start_range = 0.975
+            end_range = 1.0
+
+            while len(results) < search_limit or start_range == 0:
+                search_param = {
+                    "data": attribute_embedding, 
+                    "anns_field": "embedding_value", 
+                    "param": { "metric_type": "COSINE", "params": { "radius": start_range, "range_filter" : end_range}, "offset": 0 },
+                    "limit": 16384,
+                    "output_fields": ["id", "document_id"] 
+                    }
+
+                res = collection.search(**search_param)
+                results.append(res[0])
+                start_range= start_range-0.025
+                end_range = end_range-0.025
+
 
         for i in results[0]:   
             current_document = document_base.documents[i.entity.get('document_id')]
@@ -323,24 +236,40 @@ class vectordb:
     def updating_distances_documents(self, target_embedding: List[float], documents: List[Document], document_base : DocumentBase):
         target_embedding = normalize(target_embedding.reshape(1,-1), norm = 'l2')
 
-        if len(self._model) > 0 and self._model[0] == 'reduction':
-            target_embedding= self._model['reduction'].transform(target_embedding)
-
-
-        full_collection = Collection('full_embeddings')
+        collection = Collection('embeddings')
         doc_indexes = [doc.index for doc in documents]
         processed = [] 
 
-        #Compute the distance between the embeddings of the attribute and the embeddings of the nuggets
-        results = full_collection.search(
-            data=target_embedding, 
-            anns_field="embedding_value", 
-            param=self._search_params,
-            limit=200,
-            expr= f"document_id in {str(doc_indexes)}",
-            output_fields=['id','document_id'],
-            consistency_level="Strong"
-        )
+        search_limit = len(documents)*3
+
+        if search_limit < 16384:
+
+            #Compute the distance between the embeddings of the attribute and the embeddings of the nuggets
+            results = collection.search(
+                data=target_embedding, 
+                anns_field="embedding_value", 
+                param=self._search_params,
+                limit=search_limit,
+                expr= f"document_id in {str(doc_indexes)}",
+                output_fields=['id','document_id'],
+                consistency_level="Strong"
+            )
+
+        else:
+            results=[]
+            start_range = 0.05
+
+            while len(results) < search_limit:
+                search_param = {
+                    "data": target_embedding, 
+                    "anns_field": "embedding_value", 
+                    "param": { "metric_type": "COSINE", "params": { "radius": 0.0, "range_filter" : start_range }, "offset": 0 },
+                    "limit": 16384,
+                    "output_fields": ["id", "document_id"] 
+                    }
+
+                res = collection.search(**search_param)
+                results.append(res[0])
 
 
         for i in results[0]:

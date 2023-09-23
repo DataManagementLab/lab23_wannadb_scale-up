@@ -58,6 +58,7 @@ services:
       - "etcd"
       - "minio"
 
+
 networks:
   default:
     name: milvus

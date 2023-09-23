@@ -568,6 +568,8 @@ class RankingBasedMatcherVDB(BaseMatcher):
                 if signal in self._embedding_identifier and signal in attribute.signals and signal in sample_nugget.signals:
                     embedding_list.append(attribute[signal])
                     logger.info(f"{signal} for attribute: {attribute[signal]}")
+                else:
+                    embedding_list.append(np.zeros(1024))
                 
             if len(embedding_list) > 0:
                 combined_embedding =np.concatenate(embedding_list)

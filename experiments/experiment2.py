@@ -165,19 +165,13 @@ if __name__ == "__main__":
         #               832096,
         #                962731, 345784, 317557, 696622, 675696, 467273, 475463, 540128]
         
-        for i in document_base.documents:
-            print(i.index)
 
         pr = cProfile.Profile()
         pr.enable()
-
-        
+   
         with vectordb() as vb:
-            full_collection = Collection("full_embeddings")
-            adjusted_collection = Collection("adjusted_embeddings")
-            full_collection.load()
-            adjusted_collection.load()
-        
+            collection = Collection("embeddings")
+            collection.load()
 
             for run, random_seed in enumerate(random_seeds):
                 print("\n\n\nExecuting run {}.".format(run + 1))
@@ -187,40 +181,40 @@ if __name__ == "__main__":
                 with open(path, "rb") as file:
                     document_base = DocumentBase.from_bson(file.read())
 
-                
-                wannadb_pipeline = Pipeline(
-                    [
-                        ContextSentenceCacher(),
-                        RankingBasedMatcherVDB(
-                            max_num_feedback=10,
-                            len_ranked_list=10,
-                            max_distance=0.2,
-                            num_random_docs=1,
-                            sampling_mode="AT_MAX_DISTANCE_THRESHOLD",
-                            vector_database = vb,
-                            adjust_threshold=True,
-                            embedding_identifier=[
-                                            "LabelEmbeddingSignal",
-                                            "TextEmbeddingSignal",
-                                            "ContextSentenceEmbeddingSignal"
+                    
+                    wannadb_pipeline = Pipeline(
+                        [
+                            ContextSentenceCacher(),
+                            RankingBasedMatcherVDB(
+                                max_num_feedback=10,
+                                len_ranked_list=10,
+                                max_distance=0.2,
+                                num_random_docs=1,
+                                sampling_mode="AT_MAX_DISTANCE_THRESHOLD",
+                                vector_database = vb,
+                                adjust_threshold=True,
+                                embedding_identifier=[
+                                                "LabelEmbeddingSignal",
+                                                "TextEmbeddingSignal",
+                                                "ContextSentenceEmbeddingSignal"
 
-                            ],
+                                ],
 
-                            nugget_pipeline=Pipeline(
-                                [
-                                    ContextSentenceCacher(),
-                                    CopyNormalizer(),
-                                    OntoNotesLabelParaphraser(),
-                                    SplitAttributeNameLabelParaphraser(do_lowercase=True, splitters=[" ", "_"]),
-                                    SBERTTextEmbedder("SBERTBertLargeNliMeanTokensResource"),
-                                    CombineEmbedder()
-                                ]
+                                nugget_pipeline=Pipeline(
+                                    [
+                                        ContextSentenceCacher(),
+                                        CopyNormalizer(),
+                                        OntoNotesLabelParaphraser(),
+                                        SplitAttributeNameLabelParaphraser(do_lowercase=True, splitters=[" ", "_"]),
+                                        SBERTTextEmbedder("SBERTBertLargeNliMeanTokensResource"),
+                                        CombineEmbedder()
+                                    ]
+                                )
                             )
-                        )
-                    ]
-                )
+                        ]
+                    )
 
-                '''
+                    '''
                 wannadb_pipeline = Pipeline([
                 ContextSentenceCacher(),
                 RankingBasedMatcher(
@@ -246,9 +240,9 @@ if __name__ == "__main__":
                                 SBERTTextEmbedder("SBERTBertLargeNliMeanTokensResource"),
                             ]
                         )
-                )
-                ])
-                '''      
+                    )
+                    ])
+                    '''
 
                 statistics["matching"]["config"] = wannadb_pipeline.to_config()
 
@@ -322,7 +316,7 @@ if __name__ == "__main__":
         ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
         ps.print_stats()
         print(s.getvalue())
-        with open('automatch_vdb_normalized.txt', 'w+') as f:
+        with open('automatch_vdb_single.txt', 'w+') as f:
             f.write(s.getvalue()) 
 
         # compute the results as the median
