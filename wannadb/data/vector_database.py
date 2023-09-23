@@ -32,12 +32,9 @@ from wannadb.statistics import Statistics
 from wannadb.status import EmptyStatusCallback
 import logging
 import numpy as np
-from sklearn.manifold import LocallyLinearEmbedding
 from sklearn.preprocessing import normalize
 import pickle
 import numpy as np
-from keras.layers import Input, Dense
-from keras.models import Model
 
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -112,52 +109,6 @@ class vectordb:
         logger.info("Disconnecting from vector database")
         connections.disconnect(alias='default')
 
-    def train(self, model: str, documentBase : DocumentBase) -> None:
-
-        vector_list = []
-        self._n_dim = self.get_ndim(documentBase)
-
-        if model == 'increase':
-            for i in documentBase.nuggets:
-                vector_list.append(i[AdjustedCombinedSignal])
-                vectors_matrix = np.array(vector_list)
-
-            if self._n_dim == 1:
-
-                # Definition des Autoencoder-Modells
-                input_layer = Input(shape=(1024,))
-                encoded = Dense(2048, activation='relu')(input_layer)  
-                encoded = Dense(3072, activation='relu')(encoded)      
-                decoded = Dense(2048, activation='relu')(encoded)      
-                decoded = Dense(1024, activation='sigmoid')(decoded)   
-
-            elif self._n_dim == 2:
-                input_layer = Input(shape=(2048,))
-                encoded = Dense(3072, activation='relu')(input_layer)      
-                decoded = Dense(2048, activation='sigmoid')(encoded)   
-            else:
-                raise Exception(f"Input dimensionality has to be 1024 or 2048!")
-
-            self._model['increase'] = Model(input_layer, decoded)
-            self._model['increase'].compile(optimizer='adam', loss='mse')
-            self._model['increase'].fit(vectors_matrix, vectors_matrix, epochs=50, batch_size=32)
-
-            with open(f"increase_autoencoder_{1024*self._n_dim}ndim.pkl", 'wb') as file:
-                pickle.dump(self._model['increase'], file)
-
-        elif model == 'reduction':
-            for i in documentBase.nuggets:
-                vector_list.append(i[CombinedEmbeddingSignal])
-                vectors_matrix = np.array(vector_list)
-                
-            self._model['increase'] = LocallyLinearEmbedding(n_components=1024*self._n_dim, random_state=42)
-            self._model['increase'].fit(vectors_matrix)
-
-            with open('reduction_lle.pkl', 'wb') as file:
-                pickle.dump(self._model['increase'], file)
-        else:
-            raise ValueError(f"Only \"increase\" or \"reduction\" accepted as model parameters!")
-
     
     def get_ndim(self, documentBase: DocumentBase):
         sample_attribute = documentBase.attributes[0]
@@ -174,7 +125,7 @@ class vectordb:
     def setup_vdb(self, documentBase: DocumentBase, model: str = None) -> None:
 
         # Liste alle vorhandenen Kollektionen (Vektordatenbanken) auf
-        collections = Collection.list_collections()
+        collections = utility.list_collections()
 
         for collection in collections:
             Collection(collection).drop()
@@ -216,8 +167,21 @@ class vectordb:
                     except FileNotFoundError:
                         raise FileNotFoundError(f"Please train and save a model!")
                     
-        adjusted_embbeding_schema = CollectionSchema(
+                adjusted_embbeding_schema = CollectionSchema(
                                 fields=[self._dbid,self._id, self._document_id, self._embedding_value],
+                                description="Schema for nuggets",
+                                enable_dynamic_field=True,
+                                )
+                    
+        else:
+            adjusted_embedding_value = FieldSchema( 
+                                name="embedding_value",
+                                dtype=DataType.FLOAT_VECTOR,
+                                dim=1024*self._n_dim,
+                                )
+            
+            adjusted_embbeding_schema = CollectionSchema(
+                                fields=[self._dbid,self._id, self._document_id, adjusted_embedding_value],
                                 description="Schema for nuggets",
                                 enable_dynamic_field=True,
                                 )
@@ -266,7 +230,7 @@ class vectordb:
         """
         Extract nugget data from document base
         """
-        self.setup_vdb(model, documentBase)
+        self.setup_vdb(documentBase,model)
 
         full_collection = Collection('full_embeddings')
         adjusted_collection = Collection('adjusted_embeddings')
@@ -297,7 +261,11 @@ class vectordb:
                     combined_embedding = normalize(combined_embedding.reshape(1,-1),norm='l2')
 
                     if model == 'increase':
-                        combined_embedding = self._model['increase'].predict(combined_embedding)
+                        combined_embedding = nugget[CombinedEmbeddingSignal]
+                        combined_embedding = normalize(combined_embedding.reshape(1,-1),norm='l2')
+                    else:
+                        combined_embedding = nugget[AdjustedCombinedSignal]
+                        combined_embedding = normalize(combined_embedding.reshape(1,-1),norm='l2')
 
                     data = [
                         [dbid_counter],
@@ -321,7 +289,7 @@ class vectordb:
     def compute_inital_distances(self, attribute_embedding : List[float], document_base: DocumentBase) -> List[Document]:
         attribute_embedding = normalize(attribute_embedding.reshape(1,-1),norm='l2')
 
-        if self._model[0] == 'increase':
+        if len(self._model) > 0 and self._model[0] == 'increase':
             attribute_embedding= self._model['increase'].transform(attribute_embedding)
 
         remaining_documents: List[Document] = []
@@ -355,7 +323,7 @@ class vectordb:
     def updating_distances_documents(self, target_embedding: List[float], documents: List[Document], document_base : DocumentBase):
         target_embedding = normalize(target_embedding.reshape(1,-1), norm = 'l2')
 
-        if self._model[0] == 'reduction':
+        if len(self._model) > 0 and self._model[0] == 'reduction':
             target_embedding= self._model['reduction'].transform(target_embedding)
 
 
@@ -365,7 +333,7 @@ class vectordb:
 
         #Compute the distance between the embeddings of the attribute and the embeddings of the nuggets
         results = full_collection.search(
-            data=[target_embedding], 
+            data=target_embedding, 
             anns_field="embedding_value", 
             param=self._search_params,
             limit=200,
@@ -380,10 +348,11 @@ class vectordb:
             print(f"Current Document: {current_document.name}")
 
             if not current_document in processed:
-                print(F"Not already processed")
+                #print(F"Not already processed")
                 current_nugget = i.entity.get('id')
                 distance = 1-i.distance
-                print(f"Current Nugget: {i.entity.get('id')} Distance: {distance}")
+                #print(f"Current Nugget: {i.entity.get('id')} Distance: {distance}")
+                
                 '''
                 res = full_collection.query(
                     expr = f"id == {i.entity.get('id')} and document_id == {i.entity.get('document_id')}",
@@ -398,25 +367,25 @@ class vectordb:
                     matrix = np.vstack((target_embedding, res[0]['embedding_value']))
                     cosine_distance = cosine_distances(matrix)
                     print(f"Custome Cosine Distance for nugget: {res[0]['id']}; Distance {cosine_distance[0, 1]}")
-                '''
+               '''
 
                 if 'CurrentMatchIndexSignal' in current_document.signals:
-                    print(f"Document: {current_document.name} contains CurrentMatchIndex: {current_document[CurrentMatchIndexSignal]} best distance: {current_document.nuggets[current_document[CurrentMatchIndexSignal]][CachedDistanceSignal]}")
+                    #print(f"Document: {current_document.name} contains CurrentMatchIndex: {current_document[CurrentMatchIndexSignal]} best distance: {current_document.nuggets[current_document[CurrentMatchIndexSignal]][CachedDistanceSignal]}")
                     if distance < current_document.nuggets[current_document[CurrentMatchIndexSignal]][CachedDistanceSignal]:
-                        print(f"Neue Distanz: {distance} kleiner als alte Distanz: {current_document.nuggets[current_document[CurrentMatchIndexSignal]][CachedDistanceSignal]}")
+                        #print(f"Neue Distanz: {distance} kleiner als alte Distanz: {current_document.nuggets[current_document[CurrentMatchIndexSignal]][CachedDistanceSignal]}")
                         current_document[CurrentMatchIndexSignal] = CurrentMatchIndexSignal(current_nugget)
                         current_document.nuggets[current_nugget][CachedDistanceSignal] = CachedDistanceSignal(distance)
-                        print(f"Neuer Currentindex: {current_document[CurrentMatchIndexSignal]}, Neue Distanz: {current_document.nuggets[current_document[CurrentMatchIndexSignal]][CachedDistanceSignal]}")
+                        #print(f"Neuer Currentindex: {current_document[CurrentMatchIndexSignal]}, Neue Distanz: {current_document.nuggets[current_document[CurrentMatchIndexSignal]][CachedDistanceSignal]}")
                     else:
-                        print(f"Neue Distanz: {distance} größer als alte Distanz: {current_document.nuggets[current_document[CurrentMatchIndexSignal]][CachedDistanceSignal]}")
+                        #print(f"Neue Distanz: {distance} größer als alte Distanz: {current_document.nuggets[current_document[CurrentMatchIndexSignal]][CachedDistanceSignal]}")
                         continue
                 else:
-                    print("CurrentIndex noch nicht drin")
+                    #print("CurrentIndex noch nicht drin")
                     current_document[CurrentMatchIndexSignal] = CurrentMatchIndexSignal(current_nugget)
                     current_document.nuggets[current_nugget][CachedDistanceSignal] = CachedDistanceSignal(distance)
-                    print(f"Neuer Current Index: { current_document[CurrentMatchIndexSignal]}; Neue Cached Distanz: {current_document.nuggets[current_nugget][CachedDistanceSignal]}")
+                    #print(f"Neuer Current Index: { current_document[CurrentMatchIndexSignal]}; Neue Cached Distanz: {current_document.nuggets[current_nugget][CachedDistanceSignal]}")
             else:
-                print(f"Already processed!")
+                #print(f"Already processed!")
                 continue
 
     def regenerate_index(self, index_params, collection_name = "embeddings"):

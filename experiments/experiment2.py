@@ -74,15 +74,9 @@ if __name__ == "__main__":
             u_attr_name: attr_name for u_attr_name, attr_name in zip(user_attribute_names, dataset.ATTRIBUTES)
         }
 
-        list_of_attribute = []
-        for i in dataset.ATTRIBUTES:
-            new_attribute = Attribute(i)
-            new_attribute[UserProvidedExamplesSignal] = UserProvidedExamplesSignal(["amount of deaths"])
-            list_of_attribute.append(new_attribute)
-
         document_base = DocumentBase(
             documents=[Document(doc["id"], doc["text"]) for doc in documents],
-            attributes=list_of_attribute
+            attributes=[Attribute(attribute_name) for attribute_name in user_attribute_names]
         )
 
         ################################################################################################################
@@ -154,8 +148,8 @@ if __name__ == "__main__":
         # Load embeddings into vector database
         ################################################################################################################
         
-        #with vectordb() as vdb:
-            #vdb.extract_nuggets(document_base)
+        with vectordb() as vdb:
+            vdb.extract_nuggets(document_base)
         
 
         ################################################################################################################
@@ -328,7 +322,7 @@ if __name__ == "__main__":
         ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
         ps.print_stats()
         print(s.getvalue())
-        with open('automatch_vdb_lle.txt', 'w+') as f:
+        with open('automatch_vdb_normalized.txt', 'w+') as f:
             f.write(s.getvalue()) 
 
         # compute the results as the median
