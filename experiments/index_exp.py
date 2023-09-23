@@ -25,7 +25,7 @@ results = {}
 for index_type in indicies_to_test:
     index_params["index_type"] = index_type
     with vectordb() as vb:
-        collection = Collection('Embeddings')
+        collection = Collection('embeddings')
         collection.release()
     generate_new_index(index_params)
     try:

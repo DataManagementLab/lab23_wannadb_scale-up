@@ -34,7 +34,10 @@ import logging
 import numpy as np
 from sklearn.manifold import LocallyLinearEmbedding
 from sklearn.preprocessing import normalize
-
+import pickle
+import numpy as np
+from keras.layers import Input, Dense
+from keras.models import Model
 
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -58,6 +61,8 @@ class vectordb:
         self._port = 19530
         self._embedding_identifier = ['LabelEmbeddingSignal', 'TextEmbeddingSignal', 'ContextSentenceEmbeddingSignal']
         self._embedding_collection = None
+        self._n_dim = 0
+        self._model={}
 
         logger.info("Vector database initialized")
 
@@ -77,6 +82,11 @@ class vectordb:
             name="document_id",
             dtype=DataType.INT64
         )
+        self._embedding_value = FieldSchema( 
+            name="embedding_value",
+            dtype=DataType.FLOAT_VECTOR,
+            dim=1024*3,
+            )
 
 
         # vector index params
@@ -90,8 +100,6 @@ class vectordb:
         "offset": 0, 
         "ignore_growing": False
         }
-
-
         
     def __enter__(self) -> connections:
         logger.info("Connecting to vector database")
@@ -104,11 +112,54 @@ class vectordb:
         logger.info("Disconnecting from vector database")
         connections.disconnect(alias='default')
 
+    def train(self, model: str, documentBase : DocumentBase) -> None:
 
-    def extract_nuggets(self, documentBase: DocumentBase) -> None:
-        """
-        Extract nugget data from document base
-        """
+        vector_list = []
+        self._n_dim = self.get_ndim(documentBase)
+
+        if model == 'increase':
+            for i in documentBase.nuggets:
+                vector_list.append(i[AdjustedCombinedSignal])
+                vectors_matrix = np.array(vector_list)
+
+            if self._n_dim == 1:
+
+                # Definition des Autoencoder-Modells
+                input_layer = Input(shape=(1024,))
+                encoded = Dense(2048, activation='relu')(input_layer)  
+                encoded = Dense(3072, activation='relu')(encoded)      
+                decoded = Dense(2048, activation='relu')(encoded)      
+                decoded = Dense(1024, activation='sigmoid')(decoded)   
+
+            elif self._n_dim == 2:
+                input_layer = Input(shape=(2048,))
+                encoded = Dense(3072, activation='relu')(input_layer)      
+                decoded = Dense(2048, activation='sigmoid')(encoded)   
+            else:
+                raise Exception(f"Input dimensionality has to be 1024 or 2048!")
+
+            self._model['increase'] = Model(input_layer, decoded)
+            self._model['increase'].compile(optimizer='adam', loss='mse')
+            self._model['increase'].fit(vectors_matrix, vectors_matrix, epochs=50, batch_size=32)
+
+            with open(f"increase_autoencoder_{1024*self._n_dim}ndim.pkl", 'wb') as file:
+                pickle.dump(self._model['increase'], file)
+
+        elif model == 'reduction':
+            for i in documentBase.nuggets:
+                vector_list.append(i[CombinedEmbeddingSignal])
+                vectors_matrix = np.array(vector_list)
+                
+            self._model['increase'] = LocallyLinearEmbedding(n_components=1024*self._n_dim, random_state=42)
+            self._model['increase'].fit(vectors_matrix)
+
+            with open('reduction_lle.pkl', 'wb') as file:
+                pickle.dump(self._model['increase'], file)
+        else:
+            raise ValueError(f"Only \"increase\" or \"reduction\" accepted as model parameters!")
+
+    
+    def get_ndim(self, documentBase: DocumentBase):
         sample_attribute = documentBase.attributes[0]
         sample_nugget = documentBase.nuggets[0]
 
@@ -117,56 +168,81 @@ class vectordb:
             if (signal in sample_nugget.signals) and (signal in sample_attribute.signals):
                 n_dim= n_dim+1
 
-        vector_list = []
-        for i in documentBase.nuggets:
-            vector_list.append(i[CombinedEmbeddingSignal])
+        self._n_dim = n_dim
+        return self._n_dim
+    
+    def setup_vdb(self, documentBase: DocumentBase, model: str = None) -> None:
 
-        #vectors_matrix = np.array(vector_list)
-        #self._dim_model = LocallyLinearEmbedding(n_components=1024*n_dim, random_state=42)
-        #self._dim_model.fit(vectors_matrix)
+        # Liste alle vorhandenen Kollektionen (Vektordatenbanken) auf
+        collections = Collection.list_collections()
 
-        if "full_embeddings" not in utility.list_collections():
-            embedding_value = FieldSchema( 
-            name="embedding_value",
-            dtype=DataType.FLOAT_VECTOR,
-            dim=1024*3,
-            )
+        for collection in collections:
+            Collection(collection).drop()
+            logger.info(f'Collection {collection} has been deleted.')
 
-            full_embbeding_schema = CollectionSchema(
-            fields=[self._dbid,self._id, self._document_id, embedding_value],
-            description="Schema for nuggets",
-            enable_dynamic_field=True,
-            )
 
-            full_collection = Collection(
+        #Determine dimension size of nugget to attribute collection
+        self._n_dim = self.get_ndim(documentBase)
+        
+        #Check if model for dimensionality reduction or increase should be used
+        if model is not None:
+            if model not in ['increase','decrease']:
+                raise ValueError(f"model = {model} is not valid!")
+            else:
+                if model == 'increase':
+                    try:
+                        with open(f"increase_autoencoder_{1024*self._n_dim}ndim.pkl", "rb") as file:
+                            self._model = pickle.load(file)
+
+                            self._embedding_value= FieldSchema( 
+                                name="embedding_value",
+                                dtype=DataType.FLOAT_VECTOR,
+                                dim=1024*3,
+                                )
+                
+                    except FileNotFoundError:
+                        raise FileNotFoundError(f"Please train and save a model!")
+                else:
+                    try:
+                        with open('reduction_lle.pkl', "rb") as file:
+                            self._model = pickle.load(file)
+
+                            self._embedding_value = FieldSchema( 
+                                name="embedding_value",
+                                dtype=DataType.FLOAT_VECTOR,
+                                dim=1024*self._n_dim,
+                                )
+                            
+                    except FileNotFoundError:
+                        raise FileNotFoundError(f"Please train and save a model!")
+                    
+        adjusted_embbeding_schema = CollectionSchema(
+                                fields=[self._dbid,self._id, self._document_id, self._embedding_value],
+                                description="Schema for nuggets",
+                                enable_dynamic_field=True,
+                                )
+                            
+        full_embbeding_schema = CollectionSchema(
+                            fields=[self._dbid,self._id, self._document_id, self._embedding_value],
+                            description="Schema for nuggets",
+                            enable_dynamic_field=True,
+                            )
+        
+        full_collection = Collection(
                     name="full_embeddings",
                     schema=full_embbeding_schema,
                     using="default",
                     shards_num=1,
                 )
-            logger.info("Created full collection")
-        
-        if "adjusted_embeddings" not in utility.list_collections():
-            embedding_value = FieldSchema( 
-            name="embedding_value",
-            dtype=DataType.FLOAT_VECTOR,
-            dim=1024*n_dim,
-            )
+        logger.info("Created full collection")
 
-            adjusted_embbeding_schema = CollectionSchema(
-                fields=[self._dbid,self._id, self._document_id, embedding_value],
-                description="Schema for nuggets",
-                enable_dynamic_field=True,
-            )
-
-            adjusted_collection = Collection(
+        adjusted_collection = Collection(
                     name="adjusted_embeddings",
                     schema=adjusted_embbeding_schema,
                     using="default",
                     shards_num=1,
                 )
-            logger.info("Created adjusted_collection")
-        
+        logger.info("Created adjusted_collection")
 
         full_collection = Collection("full_embeddings")
         adjusted_collection = Collection("adjusted_embeddings")
@@ -184,7 +260,16 @@ class vectordb:
             )  
     
         logger.info("Indexing finished")
-        logger.info("Extraction finished")
+
+
+    def extract_nuggets(self, documentBase: DocumentBase, model : str = None) -> None:
+        """
+        Extract nugget data from document base
+        """
+        self.setup_vdb(model, documentBase)
+
+        full_collection = Collection('full_embeddings')
+        adjusted_collection = Collection('adjusted_embeddings')
 
         logger.info("Start extracting nuggets from document base")
         full_collection.load()
@@ -192,29 +277,33 @@ class vectordb:
 
         dbid_counter = 0
         for doc_id, document in enumerate(documentBase.documents):
-                document.set_index(doc_id)
                 for id,nugget in enumerate(document.nuggets):
 
                     combined_embedding = nugget[CombinedEmbeddingSignal]
-                    #combined_embedding = normalize(combined_embedding.reshape(1,-1),norm='l2')
-                    #transformed_embedding = self._dim_model.transform(combined_embedding)
+                    combined_embedding = normalize(combined_embedding.reshape(1,-1),norm='l2')
+
+                    if model == 'reduction':
+                        combined_embedding = self._model['reduction'].transform(combined_embedding)
 
                     data = [
                         [dbid_counter],
                         [id],
                         [doc_id],
-                        [combined_embedding],     
+                        combined_embedding,     
                         ]
                     full_collection.insert(data)
 
                     combined_embedding = nugget[AdjustedCombinedSignal]
-                    #combined_embedding = normalize(combined_embedding.reshape(1,-1),norm='l2')
+                    combined_embedding = normalize(combined_embedding.reshape(1,-1),norm='l2')
+
+                    if model == 'increase':
+                        combined_embedding = self._model['increase'].predict(combined_embedding)
 
                     data = [
                         [dbid_counter],
                         [id],
                         [doc_id],
-                        [combined_embedding],     
+                        combined_embedding,     
                         ]
                     adjusted_collection.insert(data)
 
@@ -230,12 +319,16 @@ class vectordb:
 
 
     def compute_inital_distances(self, attribute_embedding : List[float], document_base: DocumentBase) -> List[Document]:
+        attribute_embedding = normalize(attribute_embedding.reshape(1,-1),norm='l2')
+
+        if self._model[0] == 'increase':
+            attribute_embedding= self._model['increase'].transform(attribute_embedding)
 
         remaining_documents: List[Document] = []
         adjusted_collection = Collection('adjusted_embeddings')
  
         results = adjusted_collection.search(
-            data=[attribute_embedding], 
+            data=attribute_embedding, 
             anns_field="embedding_value", 
             param=self._search_params,
             limit=2000,
@@ -244,10 +337,7 @@ class vectordb:
             consistency_level="Strong"
         )
 
-        print(len(results[0]))
-
-        for i in results[0]:
-            
+        for i in results[0]:   
             current_document = document_base.documents[i.entity.get('document_id')]
             if not current_document in remaining_documents:
                 current_nugget = i.entity.get('id')
@@ -263,8 +353,10 @@ class vectordb:
 
     
     def updating_distances_documents(self, target_embedding: List[float], documents: List[Document], document_base : DocumentBase):
-        #target_embedding= self._dim_model.transform(target_embedding.reshape(1,-1))
-        #target_embedding = normalize(target_embedding, norm = 'l2')
+        target_embedding = normalize(target_embedding.reshape(1,-1), norm = 'l2')
+
+        if self._model[0] == 'reduction':
+            target_embedding= self._model['reduction'].transform(target_embedding)
 
 
         full_collection = Collection('full_embeddings')
@@ -282,7 +374,6 @@ class vectordb:
             consistency_level="Strong"
         )
 
-        #print(f"Results[0]: {results[0]}")
 
         for i in results[0]:
             current_document = document_base.documents[i.entity.get('document_id')]
