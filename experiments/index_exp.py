@@ -22,7 +22,7 @@ results = {}
 
 def test_indicies(as_json=True):
     
-    generate_and_store_embedding(PATH, index_params)
+    generate_and_store_embedding(PATH)
 
     for index_type in indicies_to_test:
         index_params["index_type"] = index_type
