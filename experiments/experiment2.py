@@ -30,7 +30,7 @@ from wannadb.preprocessing.other_processing import ContextSentenceCacher, Combin
 from wannadb.resources import ResourceManager
 from wannadb.statistics import Statistics
 from wannadb.status import EmptyStatusCallback
-import datasets.corona.corona as dataset  
+import datasets.corona.corona as dataset
 from experiments.automatic_feedback import AutomaticRandomRankingBasedMatchingFeedback
 from experiments.baselines.baseline_bart_seq2seq import calculate_f1_scores
 from experiments.util import consider_overlap_as_match
@@ -44,7 +44,7 @@ logger = logging.getLogger()
 
 RESULTS_FILENAME = r"exp-2.json"
 
-if __name__ == "__main__":
+def run_experiment_2():
 
     with ResourceManager() as resource_manager:
         statistics = Statistics(do_collect=True)
