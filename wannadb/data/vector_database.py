@@ -39,6 +39,7 @@ import numpy as np
 
 logger: logging.Logger = logging.getLogger(__name__)
 EMBEDDING_COL_NAME = "embeddings"
+BSON_FILE_NAME = "corona.bson"
 
 class vectordb:
     ...
@@ -327,6 +328,14 @@ class vectordb:
 
 def generate_and_store_embedding(input_path):
     
+    with vectordb() as vb:
+        collections = utility.list_collections()
+
+        if EMBEDDING_COL_NAME in collections and os.path.exists(BSON_FILE_NAME):
+            
+            logger.info(f'Collection {EMBEDDING_COL_NAME} already exists. It won\'t be created again.')
+            return
+    
     with ResourceManager():
         documents = []
         for filename in os.listdir(input_path):
@@ -374,7 +383,7 @@ def generate_and_store_embedding(input_path):
         print(f"Combined Nugget has {len(document_base.nuggets[0][CombinedEmbeddingSignal])} Dimensions")
 
             
-        with open("corona.bson", "wb") as file:
+        with open(BSON_FILE_NAME, "wb") as file:
             file.write(document_base.to_bson())
 
         with vectordb() as vb:
@@ -476,7 +485,7 @@ def generate_new_index(index_params):
     with vectordb() as vb:
         vb.regenerate_index(index_params)
 
-def compute_embedding_distances(path = "corona.bson", rounds= 1, nprobe_max= 500, max_limit=2001 ):    
+def compute_embedding_distances(path = BSON_FILE_NAME, rounds= 1, nprobe_max= 500, max_limit=2001 ):    
     
     # pr = cProfile.Profile()
     
@@ -556,7 +565,7 @@ def compute_embedding_distances(path = "corona.bson", rounds= 1, nprobe_max= 500
     return output
 
 
-def compute_embedding_distances_withoutVDB(path = "corona.bson"):
+def compute_embedding_distances_withoutVDB(path = BSON_FILE_NAME):
     with open(path, "rb") as file:
         document_base = DocumentBase.from_bson(file.read())
 
