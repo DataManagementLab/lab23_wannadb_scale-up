@@ -125,8 +125,12 @@ def run_experiment_2(index_types: List[str] = ["FLAT","IVF_FLAT","IVF_SQ8","GPU_
 
             path = os.path.join(os.path.dirname(__file__), "..", "cache",
                                 f"exp-2-{dataset.NAME}-preprocessed.bson")
-            with open(path, "wb") as file:
-                file.write(document_base.to_bson())
+            try:
+                with open(path, "wb") as file:
+                    file.write(document_base.to_bson())
+            except Exception as e:
+                print("Could not write document base to file.")
+                print(e)
         else:
             path = os.path.join(os.path.dirname(__file__), "..", "cache",
                                 f"exp-2-{dataset.NAME}-preprocessed.bson")
