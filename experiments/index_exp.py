@@ -20,9 +20,9 @@ PATH = os.getenv("DOCUMENTS_PATH")
 
 results = {}
 
-generate_and_store_embedding(PATH, index_params)
-
 def test_indicies(as_json=True):
+    
+    generate_and_store_embedding(PATH, index_params)
 
     for index_type in indicies_to_test:
         index_params["index_type"] = index_type
