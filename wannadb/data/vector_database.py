@@ -137,8 +137,6 @@ class vectordb:
         logger.info("Created embedding collection")
         collection = Collection(EMBEDDING_COL_NAME)
 
-        
-
 
     def extract_nuggets(self, documentBase: DocumentBase, model : str = None) -> None:
         """
@@ -149,7 +147,6 @@ class vectordb:
         collection = Collection(EMBEDDING_COL_NAME)
 
         logger.info("Start extracting nuggets from document base")
-        collection.load()
 
         dbid_counter = 0
         for doc_id, document in enumerate(documentBase.documents):
@@ -182,7 +179,6 @@ class vectordb:
         logger.info("Indexing finished")
         
         logger.info("Embedding insertion finished")
-        collection.release()
 
 
     def compute_inital_distances(self, attribute_embedding : List[float], document_base: DocumentBase) -> List[Document]:
