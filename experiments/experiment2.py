@@ -2,6 +2,7 @@ import json
 import logging.config
 import os
 import random
+import time
 from typing import List
 
 import numpy as np
@@ -49,7 +50,7 @@ def run_experiment_2(index_types: List[str] = ["FLAT","IVF_FLAT","IVF_SQ8","GPU_
 
     with ResourceManager() as resource_manager:
         statistics = Statistics(do_collect=True)
-
+        index_type_durations = []
         ################################################################################################################
         # dataset
         ################################################################################################################
@@ -172,6 +173,7 @@ def run_experiment_2(index_types: List[str] = ["FLAT","IVF_FLAT","IVF_SQ8","GPU_
 
             pr = cProfile.Profile()
             pr.enable()
+            start_time = time.time()
     
             with vectordb() as vb:
                 vdb.regenerate_index(index_type)
@@ -317,13 +319,15 @@ def run_experiment_2(index_types: List[str] = ["FLAT","IVF_FLAT","IVF_SQ8","GPU_
                     
                 collection.release()
 
+            duration = time.time() - start_time
+            index_type_durations.append(duration)
             pr.disable()
             s = io.StringIO()
             sortby = SortKey.CUMULATIVE
             ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
             ps.print_stats()
             print(s.getvalue())
-            with open(f'automatch_vdb_single_{index_type}.txt', 'w+') as f:
+            with open(path[:-5] +f'automatch_vdb_single_{index_type}.txt', 'w+') as f:
                 f.write(s.getvalue()) 
 
             # compute the results as the median
@@ -430,3 +434,29 @@ def run_experiment_2(index_types: List[str] = ["FLAT","IVF_FLAT","IVF_SQ8","GPU_
                 )
 
             plt.savefig(path[:-5] + f"-f1-scores-{index_type}.pdf", format="pdf", transparent=True)
+            
+            
+        ################################################################################################################
+        # Duration per index type
+        ################################################################################################################
+        try:
+            _, ax = plt.subplots(figsize=(7, 5))
+            sns.barplot(x=index_types, y=index_type_durations, ax=ax, color="#0c2461")
+            ax.set_ylabel("Duration in seconds")
+            ax.set_title("Durations per Index Type", size=12)
+            ax.tick_params(axis="x", labelsize=7)
+            plt.xticks(rotation=20, ha='right')
+            plt.subplots_adjust(0.09, 0.15, 0.99, 0.94)
+
+            for inex_type, duration in zip(np.arange(len(index_types)), index_type_durations):
+                ax.text(
+                    inex_type,
+                    duration,
+                    str(round(duration, 2)),
+                    fontsize=9,
+                    horizontalalignment="center"
+                )
+
+            plt.savefig(path[:-5] + f"-durations-{index_type}.pdf", format="pdf", transparent=True)
+        except:
+            print("No durations plot")
