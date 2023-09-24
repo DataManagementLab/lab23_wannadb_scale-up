@@ -374,7 +374,6 @@ def generate_and_store_embedding(input_path):
         print(f"Document base has { len([attribute for attribute in document_base.attributes if 'ContextSentenceEmbeddingSignal' in attribute.signals.keys()])} attribute ContextSentenceEmbeddings.")
         print(f"Document base has {len([nugget for nugget in document_base.nuggets if 'CombinedEmbeddingSignal' in nugget.signals.keys()])} nugget combined Embeddings")
         print(f"Combined Nugget has {len(document_base.nuggets[0][CombinedEmbeddingSignal])} Dimensions")
-        print(f"Adjusted Combined Nugget has {len(document_base.nuggets[0][AdjustedCombinedSignal])} Dimensions")
 
             
         with open("corona.bson", "wb") as file:
