@@ -3,7 +3,7 @@
 /__pycache__/
 /.pytest_cache/
 /volumes/
-/datasets/
+*.zip
 /models/
 __pycache__
 __pycache__/
