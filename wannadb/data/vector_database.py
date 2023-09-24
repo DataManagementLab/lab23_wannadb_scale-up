@@ -22,7 +22,7 @@ import random
 import time
 import numpy as np
 from wannadb.statistics import Statistics
-from wannadb.data.signals import LabelEmbeddingSignal, TextEmbeddingSignal, ContextSentenceEmbeddingSignal, RelativePositionSignal, POSTagsSignal
+from wannadb.data.signals import LabelEmbeddingSignal, TextEmbeddingSignal, ContextSentenceEmbeddingSignal, RelativePositionSignal, POSTagsSignal, CurrentMatchIndexSignal, CachedDistanceSignal
 from scipy.spatial.distance import cosine
 from sklearn.metrics.pairwise import cosine_distances
 
@@ -118,11 +118,17 @@ class vectordb:
         
     def regenerate_index(self, index_params, collection_name = "Embeddings"):
         collection = Collection(collection_name)
+        try:
+            collection.release()
+        except Exception:
+            pass
+        
         collection.drop_index()
         collection.create_index(
             field_name='embedding_value', 
             index_params=index_params
             )
+        
 
 
     def extract_nuggets(self, documentBase: DocumentBase, index_params=INDEX_PARAMS, collection_name = "Embeddings") -> None:
@@ -169,6 +175,36 @@ class vectordb:
         logger.info("Indexing finished")
         logger.info("Extraction finished")
     
+    
+    def compute_inital_distances(self, attribute_embedding : List[float], document_base: DocumentBase) -> List[Document]:
+
+        remaining_documents: List[Document] = []
+        embedding_collection = Collection('Embeddings')
+        embedding_collection.load()
+        
+
+        for i in document_base.documents:
+
+            #Compute the distance between the embeddings of the attribute and the embeddings of the nuggets
+            search_param= {
+                'data' : [attribute_embedding],
+                'anns_field' : "embedding_value",
+                'param' : {"metric_type": "L2", "params": {"nprobe": 1000}, "offset": 0},
+                'limit' : 1,
+                'expr' : f"id like \"{i.name}%\""
+                    }
+            
+            results = embedding_collection.search(**search_param)
+            logger.info(f"results for document: {i.name}: Result: {results}")
+            logger.info(f"results: {results[0].ids} distance: {results[0].distances} ")
+            if results[0].ids: 
+                i[CurrentMatchIndexSignal] = CurrentMatchIndexSignal(int(results[0][0].id.split(";")[1])) #sicherstellen, dass ; nicht im document name verwendet wird
+                i.nuggets[int(results[0][0].id.split(";")[1])][CachedDistanceSignal] = CachedDistanceSignal(results[0][0].distance)
+                remaining_documents.append(i)
+                logger.info(f"Appended nugget: {results[0].ids}; To document {i.name} cached index: {i[CurrentMatchIndexSignal]}; Cached distance {i.nuggets[i[CurrentMatchIndexSignal]][CachedDistanceSignal]}")
+       
+        embedding_collection.release()
+        return remaining_documents
 
 def compute_distances(
             xs,
@@ -328,6 +364,35 @@ def generate_and_store_embedding(input_path, index_params = INDEX_PARAMS):
 def generate_new_index(index_params):
     with vectordb() as vb:
         vb.regenerate_index(index_params)
+        
+        
+def compute_new_vdb_distances(path = "corona.bson"):
+    
+    times = {}
+    with open(path, "rb") as file:
+        document_base = DocumentBase.from_bson(file.read())
+    
+        with vectordb() as vb:
+            for attribute in document_base.attributes:
+                #for every embedding signal in the attribute
+                #for i in [signal.identifier for signal in attribute.signals.values() if signal.identifier in embeddding_signals]:
+
+                embedding_vector = []
+                for embedding_name in vb._embedding_identifier:
+                    embedding_vector_data = attribute.signals.get(embedding_name, None)
+                    if embedding_vector_data is not None:
+                        embedding_value = embedding_vector_data.value
+                        
+                    else:
+                        embedding_value = np.zeros(1024)
+                    embedding_vector.extend(embedding_value)
+                
+                start_time = time.time()
+                vb.compute_inital_distances(embedding_vector, document_base)
+                times[attribute.name] = time.time() - start_time
+                
+    return times
+                
 
 def compute_embedding_distances(path = "corona.bson", rounds= 1, nprobe_max= 100, max_limit=2001 ):    
     
