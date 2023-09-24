@@ -377,6 +377,8 @@ def generate_and_store_embedding(input_path):
         with open("corona.bson", "wb") as file:
             file.write(document_base.to_bson())
 
+        with vectordb() as vb:
+            vb.extract_nuggets(document_base)
 
 
 def compute_distances(
