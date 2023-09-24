@@ -2,6 +2,7 @@ import json
 import logging.config
 import os
 import random
+from typing import List
 
 import numpy as np
 import seaborn as sns
@@ -44,7 +45,7 @@ logger = logging.getLogger()
 
 RESULTS_FILENAME = r"exp-2.json"
 
-def run_experiment_2():
+def run_experiment_2(index_types: List[str] = ["FLAT","IVF_FLAT","IVF_SQ8","GPU_IVF_FLAT"]):
 
     with ResourceManager() as resource_manager:
         statistics = Statistics(do_collect=True)
@@ -143,6 +144,7 @@ def run_experiment_2():
                             break
                 if match:
                     statistics["preprocessing"]["results"]["num_extracted"][attribute] += 1
+                    
 
         ################################################################################################################
         # Load embeddings into vector database
@@ -152,274 +154,279 @@ def run_experiment_2():
             vdb.extract_nuggets(document_base)
         
 
-        ################################################################################################################
-        # matching phase
-        ################################################################################################################
+        for index_type in index_types:
+            vdb.regenerate_index(index_type)
+            
+            ################################################################################################################
+            # matching phase
+            ################################################################################################################
 
-        for attribute_name in dataset.ATTRIBUTES:
-            statistics["matching"]["results"]["considered_as_match"][attribute_name] = set()
+            for attribute_name in dataset.ATTRIBUTES:
+                statistics["matching"]["results"]["considered_as_match"][attribute_name] = set()
 
-        # random seeds have been randomly chosen once from [0, 1000000]
-        random_seeds = [200488, 422329, 449756, 739608, 983889, 836016, 264198, 908457, 205619, 461905]
-        #random_seeds = [794009, 287762, 880883, 663238, 137616, 543468, 329177, 322737, 343909, 824474, 220481,
-        #               832096,
-        #                962731, 345784, 317557, 696622, 675696, 467273, 475463, 540128]
-        
+            # random seeds have been randomly chosen once from [0, 1000000]
+            random_seeds = [200488, 422329, 449756, 739608, 983889, 836016, 264198, 908457, 205619, 461905]
+            #random_seeds = [794009, 287762, 880883, 663238, 137616, 543468, 329177, 322737, 343909, 824474, 220481,
+            #               832096,
+            #                962731, 345784, 317557, 696622, 675696, 467273, 475463, 540128]
+            
 
-        pr = cProfile.Profile()
-        pr.enable()
-   
-        with vectordb() as vb:
-            collection = Collection(EMBEDDING_COL_NAME)
-            collection.load()
+            pr = cProfile.Profile()
+            pr.enable()
+    
+            with vectordb() as vb:
+                collection = Collection(EMBEDDING_COL_NAME)
+                collection.load()
 
-            for run, random_seed in enumerate(random_seeds):
-                print("\n\n\nExecuting run {}.".format(run + 1))
+                for run, random_seed in enumerate(random_seeds):
+                    print("\n\n\nExecuting run {}.".format(run + 1))
 
-                # load the document base
-                path = os.path.join(os.path.dirname(__file__), "..", "cache", f"exp-2-{dataset.NAME}-preprocessed.bson")
-                with open(path, "rb") as file:
-                    document_base = DocumentBase.from_bson(file.read())
+                    # load the document base
+                    path = os.path.join(os.path.dirname(__file__), "..", "cache", f"exp-2-{dataset.NAME}-preprocessed.bson")
+                    with open(path, "rb") as file:
+                        document_base = DocumentBase.from_bson(file.read())
 
-                    
-                    wannadb_pipeline = Pipeline(
-                        [
-                            ContextSentenceCacher(),
-                            RankingBasedMatcherVDB(
-                                max_num_feedback=10,
-                                len_ranked_list=10,
-                                max_distance=0.2,
-                                num_random_docs=1,
-                                sampling_mode="AT_MAX_DISTANCE_THRESHOLD",
-                                vector_database = vb,
-                                adjust_threshold=True,
-                                embedding_identifier=[
-                                                "LabelEmbeddingSignal",
-                                                "TextEmbeddingSignal",
-                                                "ContextSentenceEmbeddingSignal"
-
-                                ],
-
-                                nugget_pipeline=Pipeline(
-                                    [
-                                        ContextSentenceCacher(),
-                                        CopyNormalizer(),
-                                        OntoNotesLabelParaphraser(),
-                                        SplitAttributeNameLabelParaphraser(do_lowercase=True, splitters=[" ", "_"]),
-                                        SBERTTextEmbedder("SBERTBertLargeNliMeanTokensResource"),
-                                        CombineEmbedder()
-                                    ]
-                                )
-                            )
-                        ]
-                    )
-
-                    '''
-                wannadb_pipeline = Pipeline([
-                ContextSentenceCacher(),
-                RankingBasedMatcher(
-                    distance=SignalsMeanDistance(
-                        signal_identifiers=[
-                            "LabelEmbeddingSignal",
-                            "TextEmbeddingSignal",
-                            "ContextSentenceEmbeddingSignal"
-                        ]
-                    ),
-                    max_num_feedback=10,
-                    len_ranked_list=10,
-                    max_distance=0.2,  
-                    num_random_docs=1,
-                    sampling_mode="AT_MAX_DISTANCE_THRESHOLD",  
-                    adjust_threshold=True,
-                    nugget_pipeline=Pipeline(
+                        
+                        wannadb_pipeline = Pipeline(
                             [
                                 ContextSentenceCacher(),
-                                CopyNormalizer(),
-                                OntoNotesLabelParaphraser(),
-                                SplitAttributeNameLabelParaphraser(do_lowercase=True, splitters=[" ", "_"]),
-                                SBERTTextEmbedder("SBERTBertLargeNliMeanTokensResource"),
+                                RankingBasedMatcherVDB(
+                                    max_num_feedback=10,
+                                    len_ranked_list=10,
+                                    max_distance=0.2,
+                                    num_random_docs=1,
+                                    sampling_mode="AT_MAX_DISTANCE_THRESHOLD",
+                                    vector_database = vb,
+                                    adjust_threshold=True,
+                                    embedding_identifier=[
+                                                    "LabelEmbeddingSignal",
+                                                    "TextEmbeddingSignal",
+                                                    "ContextSentenceEmbeddingSignal"
+
+                                    ],
+
+                                    nugget_pipeline=Pipeline(
+                                        [
+                                            ContextSentenceCacher(),
+                                            CopyNormalizer(),
+                                            OntoNotesLabelParaphraser(),
+                                            SplitAttributeNameLabelParaphraser(do_lowercase=True, splitters=[" ", "_"]),
+                                            SBERTTextEmbedder("SBERTBertLargeNliMeanTokensResource"),
+                                            CombineEmbedder()
+                                        ]
+                                    )
+                                )
                             ]
                         )
+
+                        '''
+                    wannadb_pipeline = Pipeline([
+                    ContextSentenceCacher(),
+                    RankingBasedMatcher(
+                        distance=SignalsMeanDistance(
+                            signal_identifiers=[
+                                "LabelEmbeddingSignal",
+                                "TextEmbeddingSignal",
+                                "ContextSentenceEmbeddingSignal"
+                            ]
+                        ),
+                        max_num_feedback=10,
+                        len_ranked_list=10,
+                        max_distance=0.2,  
+                        num_random_docs=1,
+                        sampling_mode="AT_MAX_DISTANCE_THRESHOLD",  
+                        adjust_threshold=True,
+                        nugget_pipeline=Pipeline(
+                                [
+                                    ContextSentenceCacher(),
+                                    CopyNormalizer(),
+                                    OntoNotesLabelParaphraser(),
+                                    SplitAttributeNameLabelParaphraser(do_lowercase=True, splitters=[" ", "_"]),
+                                    SBERTTextEmbedder("SBERTBertLargeNliMeanTokensResource"),
+                                ]
+                            )
+                        )
+                        ])
+                        '''
+
+                    statistics["matching"]["config"] = wannadb_pipeline.to_config()
+
+                    # set the random seed
+                    random.seed(random_seed)
+
+                    logger.setLevel(logging.WARN)
+
+                    wannadb_pipeline(
+                    document_base=document_base,
+                    interaction_callback=AutomaticRandomRankingBasedMatchingFeedback(
+                        documents,
+                        user_attribute_name2attribute_name
+                    ),
+                    status_callback=EmptyStatusCallback(),
+                    statistics=statistics["matching"]["runs"][str(run)]
                     )
-                    ])
-                    '''
 
-                statistics["matching"]["config"] = wannadb_pipeline.to_config()
 
-                # set the random seed
-                random.seed(random_seed)
+                    logger.setLevel(logging.INFO)
 
-                logger.setLevel(logging.WARN)
+                    # evaluate the matching process
+                    for attribute, attribute_name in zip(dataset.ATTRIBUTES, user_attribute_names):
+                        results = statistics["matching"]["runs"][str(run)]["results"][attribute]
+                        results["num_should_be_filled_is_empty"] = 0
+                        results["num_should_be_filled_is_correct"] = 0
+                        results["num_should_be_filled_is_incorrect"] = 0
+                        results["num_should_be_empty_is_empty"] = 0
+                        results["num_should_be_empty_is_full"] = 0
 
-                wannadb_pipeline(
-                document_base=document_base,
-                interaction_callback=AutomaticRandomRankingBasedMatchingFeedback(
-                    documents,
-                    user_attribute_name2attribute_name
-                ),
-                status_callback=EmptyStatusCallback(),
-                statistics=statistics["matching"]["runs"][str(run)]
+                        for document, wannadb_document in zip(documents, document_base.documents):
+                            found_nuggets = []
+                            if attribute_name in wannadb_document.attribute_mappings.keys():
+                                found_nuggets = wannadb_document.attribute_mappings[attribute_name]
+
+                            if document["mentions"][attribute]:  # document states cell's value
+                                if not found_nuggets:
+                                    results["num_should_be_filled_is_empty"] += 1
+                                else:
+                                    found_nugget = found_nuggets[0]  # TODO: only considers the first found nugget
+                                    for mention in document["mentions"][
+                                        attribute]:  # + document["mentions_same_attribute_class"][attribute]
+                                        if consider_overlap_as_match(mention["start_char"], mention["end_char"],
+                                                                    found_nugget.start_char, found_nugget.end_char):
+                                            results["num_should_be_filled_is_correct"] += 1
+                                            break
+                                    else:
+                                        results["num_should_be_filled_is_incorrect"] += 1
+
+                            else:  # document does not state cell's value
+                                if found_nuggets == []:
+                                    results["num_should_be_empty_is_empty"] += 1
+                                else:
+                                    results["num_should_be_empty_is_full"] += 1
+
+                        # compute the evaluation metrics
+                        calculate_f1_scores(results)
+
+                    # compute Macro F1 over dataset:
+                    attribute_f1_scores = []
+                    for attribute in dataset.ATTRIBUTES:
+                        calculate_f1_scores(statistics["matching"]["runs"][str(run)]["results"][attribute])
+                        attribute_f1_scores.append(
+                            statistics["matching"]["runs"][str(run)]["results"][attribute]["f1_score"])
+                    results = statistics["matching"]["runs"][str(run)]["results"]["macro_f1"] = np.mean(attribute_f1_scores)
+                    print(f"{index_type} F1 Score: ", np.mean(attribute_f1_scores))
+                    
+                collection.release()
+
+            pr.disable()
+            s = io.StringIO()
+            sortby = SortKey.CUMULATIVE
+            ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+            ps.print_stats()
+            print(s.getvalue())
+            with open(f'automatch_vdb_single_{index_type}.txt', 'w+') as f:
+                f.write(s.getvalue()) 
+
+            # compute the results as the median
+            for attribute in dataset.ATTRIBUTES:
+                for score in ["recall", "precision", "f1_score", "num_should_be_filled_is_empty",
+                            "num_should_be_filled_is_correct", "num_should_be_filled_is_incorrect",
+                            "num_should_be_empty_is_empty", "num_should_be_empty_is_full"]:
+                    values = [res["results"][attribute][score] for res in statistics["matching"]["runs"].all_values()]
+                    statistics["matching"]["results"][attribute][score] = np.median(values)
+            statistics["matching"]["results"]["final_macro_f1"] = np.median(
+                [res["results"]["macro_f1"] for res in statistics["matching"]["runs"].all_values()])
+            print("Overall Macro F1: ", statistics["matching"]["results"]["final_macro_f1"])
+
+            ################################################################################################################
+            # store the results
+            ################################################################################################################
+            path = os.path.join(os.path.dirname(__file__), "results", f"{dataset.NAME}")
+            if not os.path.isdir(path):
+                os.makedirs(path, exist_ok=True)
+            path = str(os.path.join(path, RESULTS_FILENAME))
+            with open(path, "w") as file:
+                json.dump(statistics.to_serializable(), file, indent=4)
+
+            ################################################################################################################
+            # draw plots
+            ################################################################################################################
+            attribute_names = statistics["dataset"]["attributes"]
+
+            num_mentions = [statistics["dataset"]["num_mentioned"][attribute] for attribute in attribute_names]
+            num_documents = statistics["dataset"]["num_documents"]
+            percent_mentions = [y / num_documents * 100 for y in num_mentions]
+            num_extracted = [statistics["preprocessing"]["results"]["num_extracted"][attribute] for attribute in
+                            attribute_names]
+            percent_extracted = [y / x * 100 for x, y in zip(num_mentions, num_extracted)]
+            recalls = [statistics["matching"]["results"][attribute]["recall"] for attribute in attribute_names]
+            precisions = [statistics["matching"]["results"][attribute]["precision"] for attribute in attribute_names]
+            f1_scores = [statistics["matching"]["results"][attribute]["f1_score"] for attribute in attribute_names]
+
+            ################################################################################################################
+            # mentions by attribute
+            ################################################################################################################
+            _, ax = plt.subplots(figsize=(7, 5))
+            sns.barplot(x=attribute_names, y=percent_mentions, ax=ax, color="#0c2461")
+            ax.set_ylabel("% mentioned")
+            ax.set_title(f"Percentage of Documents that Mention each Attribute {index_type}", size=12)
+            ax.tick_params(axis="x", labelsize=7)
+            plt.xticks(rotation=20, ha='right')
+            ax.set_ylim((0, 110))
+            plt.subplots_adjust(0.09, 0.15, 0.99, 0.94)
+
+            for x_value, percentage in zip(np.arange(len(attribute_names)), percent_mentions):
+                ax.text(
+                    x_value,
+                    percentage + 1,
+                    str(int(round(percentage, 0))),
+                    fontsize=9,
+                    horizontalalignment="center"
                 )
 
+            plt.savefig(path[:-5] + f"-percent-mentioned-{index_type}.pdf", format="pdf", transparent=True)
 
-                logger.setLevel(logging.INFO)
+            ################################################################################################################
+            # percentage extracted by attribute
+            ################################################################################################################
+            _, ax = plt.subplots(figsize=(7, 5))
+            sns.barplot(x=attribute_names, y=percent_extracted, ax=ax, color="#0c2461")
+            ax.set_ylabel("% extracted")
+            ax.set_title(f"Percentage of Extracted Mentions by Attribute {index_type}", size=12)
+            ax.tick_params(axis="x", labelsize=7)
+            plt.xticks(rotation=20, ha='right')
+            ax.set_ylim((0, 110))
+            plt.subplots_adjust(0.09, 0.15, 0.99, 0.94)
 
-                # evaluate the matching process
-                for attribute, attribute_name in zip(dataset.ATTRIBUTES, user_attribute_names):
-                    results = statistics["matching"]["runs"][str(run)]["results"][attribute]
-                    results["num_should_be_filled_is_empty"] = 0
-                    results["num_should_be_filled_is_correct"] = 0
-                    results["num_should_be_filled_is_incorrect"] = 0
-                    results["num_should_be_empty_is_empty"] = 0
-                    results["num_should_be_empty_is_full"] = 0
+            for x_value, percentage in zip(np.arange(len(attribute_names)), percent_extracted):
+                ax.text(
+                    x_value,
+                    percentage + 1,
+                    str(int(round(percentage, 0))),
+                    fontsize=9,
+                    horizontalalignment="center"
+                )
 
-                    for document, wannadb_document in zip(documents, document_base.documents):
-                        found_nuggets = []
-                        if attribute_name in wannadb_document.attribute_mappings.keys():
-                            found_nuggets = wannadb_document.attribute_mappings[attribute_name]
+            plt.savefig(path[:-5] + f"-percent-extracted-{index_type}.pdf", format="pdf", transparent=True)
 
-                        if document["mentions"][attribute]:  # document states cell's value
-                            if not found_nuggets:
-                                results["num_should_be_filled_is_empty"] += 1
-                            else:
-                                found_nugget = found_nuggets[0]  # TODO: only considers the first found nugget
-                                for mention in document["mentions"][
-                                    attribute]:  # + document["mentions_same_attribute_class"][attribute]
-                                    if consider_overlap_as_match(mention["start_char"], mention["end_char"],
-                                                                found_nugget.start_char, found_nugget.end_char):
-                                        results["num_should_be_filled_is_correct"] += 1
-                                        break
-                                else:
-                                    results["num_should_be_filled_is_incorrect"] += 1
+            ################################################################################################################
+            # F1-Scores by attribute
+            ################################################################################################################
+            _, ax = plt.subplots(figsize=(7, 5))
+            sns.barplot(x=attribute_names, y=f1_scores, ax=ax, color="#0c2461")
+            ax.set_ylabel("F1 score")
+            ax.set_title(f"E2E F1 Scores by Attribute {index_type}", size=12)
+            ax.tick_params(axis="x", labelsize=7)
+            plt.xticks(rotation=20, ha='right')
+            ax.set_ylim((0, 1.1))
+            plt.subplots_adjust(0.09, 0.15, 0.99, 0.94)
 
-                        else:  # document does not state cell's value
-                            if found_nuggets == []:
-                                results["num_should_be_empty_is_empty"] += 1
-                            else:
-                                results["num_should_be_empty_is_full"] += 1
+            for x_value, percentage in zip(np.arange(len(attribute_names)), f1_scores):
+                ax.text(
+                    x_value,
+                    percentage + 0.01,
+                    str(round(percentage, 2)),
+                    fontsize=9,
+                    horizontalalignment="center"
+                )
 
-                    # compute the evaluation metrics
-                    calculate_f1_scores(results)
-
-                # compute Macro F1 over dataset:
-                attribute_f1_scores = []
-                for attribute in dataset.ATTRIBUTES:
-                    calculate_f1_scores(statistics["matching"]["runs"][str(run)]["results"][attribute])
-                    attribute_f1_scores.append(
-                        statistics["matching"]["runs"][str(run)]["results"][attribute]["f1_score"])
-                results = statistics["matching"]["runs"][str(run)]["results"]["macro_f1"] = np.mean(attribute_f1_scores)
-                print("F1 Score: ", np.mean(attribute_f1_scores))
-
-        pr.disable()
-        s = io.StringIO()
-        sortby = SortKey.CUMULATIVE
-        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-        ps.print_stats()
-        print(s.getvalue())
-        with open('automatch_vdb_single.txt', 'w+') as f:
-            f.write(s.getvalue()) 
-
-        # compute the results as the median
-        for attribute in dataset.ATTRIBUTES:
-            for score in ["recall", "precision", "f1_score", "num_should_be_filled_is_empty",
-                          "num_should_be_filled_is_correct", "num_should_be_filled_is_incorrect",
-                          "num_should_be_empty_is_empty", "num_should_be_empty_is_full"]:
-                values = [res["results"][attribute][score] for res in statistics["matching"]["runs"].all_values()]
-                statistics["matching"]["results"][attribute][score] = np.median(values)
-        statistics["matching"]["results"]["final_macro_f1"] = np.median(
-            [res["results"]["macro_f1"] for res in statistics["matching"]["runs"].all_values()])
-        print("Overall Macro F1: ", statistics["matching"]["results"]["final_macro_f1"])
-
-        ################################################################################################################
-        # store the results
-        ################################################################################################################
-        path = os.path.join(os.path.dirname(__file__), "results", f"{dataset.NAME}")
-        if not os.path.isdir(path):
-            os.makedirs(path, exist_ok=True)
-        path = str(os.path.join(path, RESULTS_FILENAME))
-        with open(path, "w") as file:
-            json.dump(statistics.to_serializable(), file, indent=4)
-
-        ################################################################################################################
-        # draw plots
-        ################################################################################################################
-        attribute_names = statistics["dataset"]["attributes"]
-
-        num_mentions = [statistics["dataset"]["num_mentioned"][attribute] for attribute in attribute_names]
-        num_documents = statistics["dataset"]["num_documents"]
-        percent_mentions = [y / num_documents * 100 for y in num_mentions]
-        num_extracted = [statistics["preprocessing"]["results"]["num_extracted"][attribute] for attribute in
-                         attribute_names]
-        percent_extracted = [y / x * 100 for x, y in zip(num_mentions, num_extracted)]
-        recalls = [statistics["matching"]["results"][attribute]["recall"] for attribute in attribute_names]
-        precisions = [statistics["matching"]["results"][attribute]["precision"] for attribute in attribute_names]
-        f1_scores = [statistics["matching"]["results"][attribute]["f1_score"] for attribute in attribute_names]
-
-        ################################################################################################################
-        # mentions by attribute
-        ################################################################################################################
-        _, ax = plt.subplots(figsize=(7, 5))
-        sns.barplot(x=attribute_names, y=percent_mentions, ax=ax, color="#0c2461")
-        ax.set_ylabel("% mentioned")
-        ax.set_title("Percentage of Documents that Mention each Attribute", size=12)
-        ax.tick_params(axis="x", labelsize=7)
-        plt.xticks(rotation=20, ha='right')
-        ax.set_ylim((0, 110))
-        plt.subplots_adjust(0.09, 0.15, 0.99, 0.94)
-
-        for x_value, percentage in zip(np.arange(len(attribute_names)), percent_mentions):
-            ax.text(
-                x_value,
-                percentage + 1,
-                str(int(round(percentage, 0))),
-                fontsize=9,
-                horizontalalignment="center"
-            )
-
-        plt.savefig(path[:-5] + "-percent-mentioned.pdf", format="pdf", transparent=True)
-
-        ################################################################################################################
-        # percentage extracted by attribute
-        ################################################################################################################
-        _, ax = plt.subplots(figsize=(7, 5))
-        sns.barplot(x=attribute_names, y=percent_extracted, ax=ax, color="#0c2461")
-        ax.set_ylabel("% extracted")
-        ax.set_title("Percentage of Extracted Mentions by Attribute", size=12)
-        ax.tick_params(axis="x", labelsize=7)
-        plt.xticks(rotation=20, ha='right')
-        ax.set_ylim((0, 110))
-        plt.subplots_adjust(0.09, 0.15, 0.99, 0.94)
-
-        for x_value, percentage in zip(np.arange(len(attribute_names)), percent_extracted):
-            ax.text(
-                x_value,
-                percentage + 1,
-                str(int(round(percentage, 0))),
-                fontsize=9,
-                horizontalalignment="center"
-            )
-
-        plt.savefig(path[:-5] + "-percent-extracted.pdf", format="pdf", transparent=True)
-
-        ################################################################################################################
-        # F1-Scores by attribute
-        ################################################################################################################
-        _, ax = plt.subplots(figsize=(7, 5))
-        sns.barplot(x=attribute_names, y=f1_scores, ax=ax, color="#0c2461")
-        ax.set_ylabel("F1 score")
-        ax.set_title("E2E F1 Scores by Attribute", size=12)
-        ax.tick_params(axis="x", labelsize=7)
-        plt.xticks(rotation=20, ha='right')
-        ax.set_ylim((0, 1.1))
-        plt.subplots_adjust(0.09, 0.15, 0.99, 0.94)
-
-        for x_value, percentage in zip(np.arange(len(attribute_names)), f1_scores):
-            ax.text(
-                x_value,
-                percentage + 0.01,
-                str(round(percentage, 2)),
-                fontsize=9,
-                horizontalalignment="center"
-            )
-
-        plt.savefig(path[:-5] + "-f1-scores.pdf", format="pdf", transparent=True)
+            plt.savefig(path[:-5] + f"-f1-scores-{index_type}.pdf", format="pdf", transparent=True)
