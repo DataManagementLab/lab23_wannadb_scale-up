@@ -155,7 +155,6 @@ def run_experiment_2(index_types: List[str] = ["FLAT","IVF_FLAT","IVF_SQ8","GPU_
         
 
         for index_type in index_types:
-            vdb.regenerate_index(index_type)
             
             ################################################################################################################
             # matching phase
@@ -175,6 +174,7 @@ def run_experiment_2(index_types: List[str] = ["FLAT","IVF_FLAT","IVF_SQ8","GPU_
             pr.enable()
     
             with vectordb() as vb:
+                vdb.regenerate_index(index_type)
                 collection = Collection(EMBEDDING_COL_NAME)
                 collection.load()
 
