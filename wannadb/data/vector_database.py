@@ -336,9 +336,7 @@ def generate_and_store_embedding(input_path):
 
         logger.info(f"Loaded {len(documents)} documents")
         death_attribute = Attribute("deaths")
-        death_attribute[UserProvidedExamplesSignal] = UserProvidedExamplesSignal(["amount of deaths"])
         date_attribute = Attribute("date")
-        date_attribute[UserProvidedExamplesSignal] = UserProvidedExamplesSignal(["Point in time"])
         document_base = DocumentBase(documents, [death_attribute,date_attribute])
         
         # preprocess the data
