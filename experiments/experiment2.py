@@ -32,7 +32,7 @@ from wannadb.preprocessing.other_processing import ContextSentenceCacher, Combin
 from wannadb.resources import ResourceManager
 from wannadb.statistics import Statistics
 from wannadb.status import EmptyStatusCallback
-import datasets.corona.corona as dataset
+import datasets.skyscraper.skyscraper as dataset
 from experiments.automatic_feedback import AutomaticRandomRankingBasedMatchingFeedback
 from experiments.baselines.baseline_bart_seq2seq import calculate_f1_scores
 from experiments.util import consider_overlap_as_match
