@@ -34,7 +34,7 @@ import datasets.corona.corona as dataset
 from experiments.automatic_feedback import AutomaticRandomRankingBasedMatchingFeedback
 from experiments.baselines.baseline_bart_seq2seq import calculate_f1_scores
 from experiments.util import consider_overlap_as_match
-from wannadb.data.vector_database import vectordb
+from wannadb.data.vector_database import EMBEDDING_COL_NAME, vectordb
 from wannadb.data.signals import UserProvidedExamplesSignal, LabelEmbeddingSignal, TextEmbeddingSignal, ContextSentenceEmbeddingSignal
 import cProfile, pstats, io
 from pstats import SortKey
@@ -170,7 +170,7 @@ def run_experiment_2():
         pr.enable()
    
         with vectordb() as vb:
-            collection = Collection("embeddings")
+            collection = Collection(EMBEDDING_COL_NAME)
             collection.load()
 
             for run, random_seed in enumerate(random_seeds):

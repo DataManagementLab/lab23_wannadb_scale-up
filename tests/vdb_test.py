@@ -6,7 +6,7 @@ from experiments.distance_experiments import new_compute_embedding_distances
 from wannadb.data.data import Attribute, Document, DocumentBase, InformationNugget
 from wannadb.data.data import Document, DocumentBase
 import random
-from wannadb.data.vector_database import compute_embedding_distances, compute_embedding_distances_withoutVDB, generate_and_store_embedding, vectordb, VECTORDB
+from wannadb.data.vector_database import EMBEDDING_COL_NAME, compute_embedding_distances, compute_embedding_distances_withoutVDB, generate_and_store_embedding, vectordb, VECTORDB
 from pymilvus import Collection, utility
 import re
 
@@ -161,7 +161,7 @@ def test_vector_search(document_base):
         vb.extract_nuggets(document_base)
 
         #Check if correct nugget data was saved in db
-        collection = Collection("Embeddings")
+        collection = Collection(EMBEDDING_COL_NAME)
         collection.load()
 
         vectors_right =[create_random_float_vector_dimension_1024()]

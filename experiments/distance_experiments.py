@@ -1,5 +1,5 @@
 from wannadb.data.data import Attribute, Document, DocumentBase, InformationNugget
-from wannadb.data.vector_database import vectordb
+from wannadb.data.vector_database import EMBEDDING_COL_NAME, vectordb
 from pymilvus import (
     connections,
     utility,
@@ -50,7 +50,7 @@ def new_compute_embedding_distances(path = "C:/Users/Pascal/Desktop\WannaDB/lab2
             #times_per_attribute = []
 
             #vb.extract_nuggets(document_base)
-            embedding_collection = Collection("Embeddings")
+            embedding_collection = Collection(EMBEDDING_COL_NAME)
 
             start_time = time.time()
             embedding_collection.load()

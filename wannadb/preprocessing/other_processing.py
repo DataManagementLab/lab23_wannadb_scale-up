@@ -121,7 +121,7 @@ class CombineEmbedder(BasePipelineElement):
                 combined_embedding =np.concatenate(embedding_list)
                 nugget[CombinedEmbeddingSignal] = CombinedEmbeddingSignal(combined_embedding)
                 logger.info(f"Combined embedding: {nugget[CombinedEmbeddingSignal]} created!")
-                print(len(nugget[CombinedEmbeddingSignal]))
+                #print(len(nugget[CombinedEmbeddingSignal]))
 
     
     def to_config(self) -> Dict[str, Any]:

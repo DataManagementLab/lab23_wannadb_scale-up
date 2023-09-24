@@ -38,7 +38,7 @@ import numpy as np
 
 
 logger: logging.Logger = logging.getLogger(__name__)
-
+EMBEDDING_COL_NAME = "embeddings"
 
 class vectordb:
     ...
@@ -127,13 +127,13 @@ class vectordb:
                             )
         
         collection = Collection(
-                    name="embeddings",
+                    name=EMBEDDING_COL_NAME,
                     schema=embbeding_schema,
                     using="default",
                     shards_num=1,
                 )
         logger.info("Created embedding collection")
-        collection = Collection("embeddings")
+        collection = Collection(EMBEDDING_COL_NAME)
 
         #Vector index
         logger.info("Start indexing")
@@ -150,7 +150,7 @@ class vectordb:
         """
         self.setup_vdb(documentBase,model)
 
-        collection = Collection('embeddings')
+        collection = Collection(EMBEDDING_COL_NAME)
 
         logger.info("Start extracting nuggets from document base")
         collection.load()
@@ -182,7 +182,7 @@ class vectordb:
     def compute_inital_distances(self, attribute_embedding : List[float], document_base: DocumentBase) -> List[Document]:
         attribute_embedding = normalize(attribute_embedding.reshape(1,-1),norm='l2')
         remaining_documents: List[Document] = []
-        collection = Collection('embeddings')
+        collection = Collection(EMBEDDING_COL_NAME)
 
         #Determine Limit
         search_limit = len(document_base.documents)*20
@@ -236,7 +236,7 @@ class vectordb:
     def updating_distances_documents(self, target_embedding: List[float], documents: List[Document], document_base : DocumentBase):
         target_embedding = normalize(target_embedding.reshape(1,-1), norm = 'l2')
 
-        collection = Collection('embeddings')
+        collection = Collection(EMBEDDING_COL_NAME)
         doc_indexes = [doc.index for doc in documents]
         processed = [] 
 
@@ -317,7 +317,7 @@ class vectordb:
                 #print(f"Already processed!")
                 continue
 
-    def regenerate_index(self, index_params, collection_name = "embeddings"):
+    def regenerate_index(self, index_params, collection_name = EMBEDDING_COL_NAME):
         collection = Collection(collection_name)
         collection.drop_index()
         collection.create_index(
@@ -493,7 +493,7 @@ def compute_embedding_distances(path = "corona.bson", rounds= 1, nprobe_max= 500
             
             output = {}
             start_time_ = time.time()
-            embedding_collection = Collection("Embeddings")
+            embedding_collection = Collection(EMBEDDING_COL_NAME)
             embedding_collection.load()
             print("Load Collection:--- %s seconds ---" % (time.time() - start_time_))
             print(f"Embedding collection has {embedding_collection.num_entities} embeddings.")
@@ -544,8 +544,8 @@ def compute_embedding_distances(path = "corona.bson", rounds= 1, nprobe_max= 500
                             "amount_distances":avg_dist
                         }
                         
-                print(f"NProbe {nprobe}/1024")
-                print(time.time() - start_time_)
+                # print(f"NProbe {nprobe}/1024")
+                # print(time.time() - start_time_)
                 
             embedding_collection.release()
 
