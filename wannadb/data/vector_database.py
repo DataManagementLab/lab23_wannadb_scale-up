@@ -535,8 +535,7 @@ def compute_embedding_distances(path = "corona.bson", rounds= 1, nprobe_max= 500
                                 limit=limit
                             )
                             #print(f"Attribute: {attribute.name}; Type of embedding: {i}; Amount distance values: {len(results[0].distances)}")
-                            amount_distances += len(results[0].distances)   
-                            test = results[0].distances
+                            amount_distances += len(results[0].distances)
                             distances[attribute.name][0]= dict(zip(results[0].ids, results[0].distances))
                             time_sum += time.time() - start_time
                     avg_time = time_sum / rounds
