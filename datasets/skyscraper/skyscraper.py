@@ -32,7 +32,7 @@ from typing import Any, Dict, List
 
 logger = logging.getLogger(__name__)
 
-NAME: str = "skyscrapers"
+NAME: str = "skyscraper"
 
 ATTRIBUTES: List[str] = [
     "country",
@@ -45,7 +45,7 @@ def load_dataset() -> List[Dict[str, Any]]:
     """
     Load the skyscrapers dataset.
 
-    This method requires the .json files in the "datasets/skyscrapers/documents/" folder.
+    This method requires the .json files in the "datasets/skyscraper/documents/" folder.
     """
     dataset: List[Dict[str, Any]] = []
     path: str = os.path.join(os.path.dirname(__file__), "documents", "*.json")
