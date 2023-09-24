@@ -87,7 +87,8 @@ class vectordb:
         # vector index params
         self._index_params = {
         "metric_type":"COSINE",
-        "index_type":"FLAT"
+        "index_type":"FLAT",
+        "params": {"nlist": 1024}, 
         }
 
         self._search_params = {
@@ -136,13 +137,7 @@ class vectordb:
         logger.info("Created embedding collection")
         collection = Collection(EMBEDDING_COL_NAME)
 
-        #Vector index
-        logger.info("Start indexing")
-        collection.create_index(
-            field_name='embedding_value', 
-            index_params=self._index_params
-            )   
-        logger.info("Indexing finished")
+        
 
 
     def extract_nuggets(self, documentBase: DocumentBase, model : str = None) -> None:
@@ -175,7 +170,17 @@ class vectordb:
                     dbid_counter = dbid_counter+1
 
                 collection.flush()
-
+                
+        #Vector index
+        logger.info("Start indexing")
+        nlist = 4 * int(np.sqrt(dbid_counter))
+        self._index_params["params"]["nlist"] = nlist
+        collection.create_index(
+            field_name='embedding_value', 
+            index_params=self._index_params
+            )   
+        logger.info("Indexing finished")
+        
         logger.info("Embedding insertion finished")
         collection.release()
 
@@ -321,6 +326,8 @@ class vectordb:
     def regenerate_index(self, index_name, collection_name = EMBEDDING_COL_NAME):
         self._index_params["index_type"] = index_name
         collection = Collection(collection_name)
+        nlist = 4 * int(np.sqrt(collection.num_entities))
+        self._index_params["params"]["nlist"] = nlist
         collection.drop_index()
         collection.create_index(
             field_name='embedding_value', 
