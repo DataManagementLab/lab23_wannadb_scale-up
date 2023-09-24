@@ -3,7 +3,7 @@
 import datetime
 import json
 import os
-from wannadb.data.vector_database import compute_embedding_distances, compute_embedding_distances_withoutVDB, generate_and_store_embedding, generate_new_index, compute_new_vdb_distances
+from wannadb.data.vector_database import compute_embedding_distances, compute_embedding_distances_withoutVDB, generate_and_store_embedding, generate_new_index
 
 import xlsxwriter
 
