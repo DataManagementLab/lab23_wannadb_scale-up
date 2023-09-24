@@ -3,9 +3,10 @@
 /__pycache__/
 /.pytest_cache/
 /volumes/
-/datasets/
 /models/
 __pycache__
 __pycache__/
 *.xlsx
 *.bson
+*.txt
+*.json
