@@ -318,12 +318,13 @@ class vectordb:
                 #print(f"Already processed!")
                 continue
 
-    def regenerate_index(self, index_params, collection_name = EMBEDDING_COL_NAME):
+    def regenerate_index(self, index_name, collection_name = EMBEDDING_COL_NAME):
+        self._index_params["index_type"] = index_name
         collection = Collection(collection_name)
         collection.drop_index()
         collection.create_index(
             field_name='embedding_value', 
-            index_params=index_params
+            index_params=self._index_params
             )
 
 def generate_and_store_embedding(input_path):
@@ -485,7 +486,7 @@ def generate_new_index(index_params):
     with vectordb() as vb:
         vb.regenerate_index(index_params)
 
-def compute_embedding_distances(path = BSON_FILE_NAME, rounds= 1, nprobe_max= 500, max_limit=2001 ):    
+def compute_embedding_distances(path = BSON_FILE_NAME, rounds= 1, nprobe_max= 1024, max_limit=16000 ):    
     
     # pr = cProfile.Profile()
     
@@ -510,10 +511,10 @@ def compute_embedding_distances(path = BSON_FILE_NAME, rounds= 1, nprobe_max= 50
             #dist_collection.load()
             distances={}
             
-            for nprobe in range(20,nprobe_max, 20):
+            for nprobe in range(50,nprobe_max, 50):
                 search_params = {"metric_type": "L2", "params": {"nprobe": nprobe}, "offset": 0}
                 output[nprobe] = {}
-                for limit in range(500, max_limit, 500):
+                for limit in range(1000, max_limit, 500):
                     time_sum = 0
                     amount_distances = 0
                     for _ in range(rounds):

@@ -43,49 +43,57 @@ def test_indicies(as_json=True):
             json.dump(results, fp)
     
     else:  
-        timestamp = datetime.datetime.now()
-        strftd = timestamp.strftime("%m_%d_%H_%M_%S")
-        workbook = xlsxwriter.Workbook(f"MyExcel{strftd}.xlsx")
+        generate_sheet_from_json(results)
+    
+def sheet_from_file():
+    with open('index_tests.json', 'r') as fp:
+        results = json.load(fp)
+        generate_sheet_from_json(results)  
+  
+def generate_sheet_from_json(results):
+    timestamp = datetime.datetime.now()
+    strftd = timestamp.strftime("%m_%d_%H_%M_%S")
+    workbook = xlsxwriter.Workbook(f"MyExcel{strftd}.xlsx")
 
-        for index_type, result in results.items():
-            times_worksheet = workbook.add_worksheet(f"{index_type}_time")
-            distances_worksheet = workbook.add_worksheet(f"{index_type}_dist")
+    for index_type, result in results.items():
+        times_worksheet = workbook.add_worksheet(f"{index_type}_time")
+        distances_worksheet = workbook.add_worksheet(f"{index_type}_dist")
 
-            startrow = 1
-            column = 1
-            limit_arr = []
+        startrow = 1
+        column = 1
+        limit_arr = []
 
-            for nprobe, probe_dict in result["vdb"].items():
-                row = startrow
+        for nprobe, probe_dict in result["vdb"].items():
+            row = startrow
+            
+            times_worksheet.write(row, column, f"N_Probe = {nprobe}")
+            distances_worksheet.write(row, column, f"N_Probe = {nprobe}")
+            row +=1
+            for limit, limit_dict in probe_dict.items():
+                if not limit in limit_arr:
+                    limit_arr.append(limit)
                 
-                times_worksheet.write(row, column, f"N_Probe = {nprobe}")
-                distances_worksheet.write(row, column, f"N_Probe = {nprobe}")
+                times_worksheet.write(row, column, limit_dict["time"])
+                distances_worksheet.write(row, column, limit_dict["amount_distances"])
                 row +=1
-                for limit, limit_dict in probe_dict.items():
-                    if not limit in limit_arr:
-                        limit_arr.append(limit)
-                    
-                    times_worksheet.write(row, column, limit_dict["time"])
-                    distances_worksheet.write(row, column, limit_dict["amount_distances"])
-                    row +=1
-                
-                column += 1
-
+            
             column += 1
 
-            row = startrow
-            times_worksheet.write(row, column, "Without VDB")
-            distances_worksheet.write(row, column, "Without VDB")
-            row += 1
-            times_worksheet.write(row, column, result["wo_vdb"]["time"])
-            distances_worksheet.write(row, column, result["wo_vdb"]["distances"])
+        column += 1
 
-            row = startrow + 1
-            column = 1    
-            for limit in limit_arr:
-                times_worksheet.write(row, column-1, f"Limit = {limit}")
-                distances_worksheet.write(row, column-1, f"Limit = {limit}")
-                row +=1
-                
-        workbook.close()
-    
+        row = startrow
+        times_worksheet.write(row, column, "Without VDB")
+        distances_worksheet.write(row, column, "Without VDB")
+        row += 1
+        times_worksheet.write(row, column, result["wo_vdb"]["time"])
+        distances_worksheet.write(row, column, result["wo_vdb"]["distances"])
+
+        row = startrow + 1
+        column = 1    
+        for limit in limit_arr:
+            times_worksheet.write(row, column-1, f"Limit = {limit}")
+            distances_worksheet.write(row, column-1, f"Limit = {limit}")
+            row +=1
+            
+    workbook.close()
+        
