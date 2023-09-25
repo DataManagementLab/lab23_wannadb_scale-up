@@ -1,5 +1,6 @@
 """this experiment tests which vector indicies and are best suited for different amount of documents in a document base."""
 
+import copy
 import datetime
 import json
 import os
@@ -7,11 +8,6 @@ from wannadb.data.vector_database import compute_embedding_distances, compute_em
 
 import xlsxwriter
 
-index_params = {
-  "metric_type":"L2",
-  "index_type":"IVF_FLAT",
-  "params":{"nlist":1024}
-}
 indicies_to_test = ["FLAT",
                     "IVF_FLAT",
                     "IVF_SQ8",
@@ -22,14 +18,16 @@ results = {}
 
 def test_indicies(as_json=True):
     
-    generate_and_store_embedding(PATH)
+    cached_document_base = generate_and_store_embedding(PATH)
 
     for index_type in indicies_to_test:
-        index_params["index_type"] = index_type
-        generate_new_index(index_params)
+        
+        generate_new_index(index_type)
         try:
-            result_dict = compute_embedding_distances()
-            time_without, distances_without = compute_embedding_distances_withoutVDB()
+            document_base = copy.deepcopy(cached_document_base)
+            result_dict = compute_embedding_distances(document_base)
+            document_base = copy.deepcopy(cached_document_base)
+            time_without, distances_without = compute_embedding_distances_withoutVDB(document_base)
             
             results[index_type] = {"vdb":result_dict,
                                 "wo_vdb":{"time":time_without,"distances":distances_without}}

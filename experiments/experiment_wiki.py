@@ -47,7 +47,7 @@ logger = logging.getLogger()
 
 RESULTS_FILENAME = r"exp-2.json"
 
-def run_experiment_2(index_types: List[str] = ["FLAT","IVF_FLAT","IVF_SQ8","GPU_IVF_FLAT"]):
+def run_experiment_wiki(index_types: List[str] = ["FLAT","IVF_FLAT","IVF_SQ8","GPU_IVF_FLAT"]):
 
     with ResourceManager() as resource_manager:
         statistics = Statistics(do_collect=True)
@@ -63,9 +63,6 @@ def run_experiment_2(index_types: List[str] = ["FLAT","IVF_FLAT","IVF_SQ8","GPU_
 
         for attribute in dataset.ATTRIBUTES:
             statistics["dataset"]["num_mentioned"][attribute] = 0
-            for document in documents:
-                if document["mentions"][attribute]:
-                    statistics["dataset"]["num_mentioned"][attribute] += 1
 
         ################################################################################################################
         # document base
@@ -140,16 +137,6 @@ def run_experiment_2(index_types: List[str] = ["FLAT","IVF_FLAT","IVF_SQ8","GPU_
 
         for attribute in dataset.ATTRIBUTES:
             statistics["preprocessing"]["results"]["num_extracted"][attribute] = 0
-            for document, wannadb_document in zip(documents, cached_document_base.documents):
-                match = False
-                for mention in document["mentions"][attribute]:
-                    for nugget in wannadb_document.nuggets:
-                        if consider_overlap_as_match(mention["start_char"], mention["end_char"],
-                                                     nugget.start_char, nugget.end_char):
-                            match = True
-                            break
-                if match:
-                    statistics["preprocessing"]["results"]["num_extracted"][attribute] += 1
                     
 
         ################################################################################################################
