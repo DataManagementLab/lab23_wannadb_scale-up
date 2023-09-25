@@ -32,7 +32,7 @@ logger = logging.getLogger()
 
 RESULTS_FILENAME = r"exp-2.json"
 
-if __name__ == "__main__":
+def experiment_2():
 
     with ResourceManager() as resource_manager:
         statistics = Statistics(do_collect=True)
@@ -245,7 +245,7 @@ if __name__ == "__main__":
         ################################################################################################################
         # store the results
         ################################################################################################################
-        path = os.path.join(os.path.dirname(__file__), "results", f"{dataset.NAME}")
+        path = os.path.join(os.path.dirname(__file__), "baselineresults", f"{dataset.NAME}")
         if not os.path.isdir(path):
             os.makedirs(path, exist_ok=True)
         path = str(os.path.join(path, RESULTS_FILENAME))
@@ -288,7 +288,7 @@ if __name__ == "__main__":
                 horizontalalignment="center"
             )
 
-        plt.savefig(path[:-5] + "-percent-mentioned.pdf", format="pdf", transparent=True)
+        plt.savefig(path[:-5] + "baseline-percent-mentioned.pdf", format="pdf", transparent=True)
 
         ################################################################################################################
         # percentage extracted by attribute
@@ -311,7 +311,7 @@ if __name__ == "__main__":
                 horizontalalignment="center"
             )
 
-        plt.savefig(path[:-5] + "-percent-extracted.pdf", format="pdf", transparent=True)
+        plt.savefig(path[:-5] + "baseline-percent-extracted.pdf", format="pdf", transparent=True)
 
         ################################################################################################################
         # F1-Scores by attribute
@@ -334,6 +334,6 @@ if __name__ == "__main__":
                 horizontalalignment="center"
             )
 
-        plt.savefig(path[:-5] + "-f1-scores.pdf", format="pdf", transparent=True)
+        plt.savefig(path[:-5] + "baseline-f1-scores.pdf", format="pdf", transparent=True)
         
         print(duration)
