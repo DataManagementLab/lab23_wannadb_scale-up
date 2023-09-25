@@ -272,6 +272,8 @@ class vectordb:
         processed = [] 
 
         search_limit = n_docs*5
+        if search_limit == 0:
+            return
         
         if search_limit < 16384:
 
@@ -355,7 +357,15 @@ class vectordb:
         collection = Collection(collection_name)
         nlist = 4 * int(np.sqrt(collection.num_entities))
         self._index_params["params"]["nlist"] = nlist
-        collection.drop_index()
+        try:
+            collection.drop_index()
+        except:
+            try:
+                collection.release()
+            except:
+                pass
+            collection.drop_index()
+            
         collection.create_index(
             field_name='embedding_value', 
             index_params=self._index_params
