@@ -1,0 +1,17 @@
+{
+    "debug_mode": false,
+    "run_name": "bart_seq2seq_aviation",
+
+    "test_dataset_name": "aviation",
+    "test_dataset_path": "datasets/aviation/bart_seq2seq_data_test_files.json",
+    
+    "run_bart_evaluation_on_test": true,
+    "checkpoint_to_evaluate": "./checkpoints/seq2seq_aviation_ep_26_valAcc_0.94",
+
+    "run_bart_training": false,
+    "dataset": "aviation",
+    "seed": 5,
+    "epochs": 50,
+    "batch_size": 2,
+    "learning_rate": 1e-5
+}
