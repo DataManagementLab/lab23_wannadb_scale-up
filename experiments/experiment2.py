@@ -184,8 +184,13 @@ def run_experiment_2(index_types: List[str] = ["FLAT","IVF_FLAT","IVF_SQ8","GPU_
             start_time = time.time()
              
             with vectordb() as vdb:
-                vdb.regenerate_index(index_type)
                 collection = Collection(EMBEDDING_COL_NAME)
+                try:
+                    collection.release()
+                except:
+                    pass
+                
+                vdb.regenerate_index(index_type)
                 collection.load()
 
                 for run, random_seed in enumerate(random_seeds):
