@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 from transformers import BartForConditionalGeneration, BartTokenizer, AdamW, get_scheduler
 
-from aset.statistics import Statistics
+from wannadb.statistics import Statistics
 
 
 def set_device():

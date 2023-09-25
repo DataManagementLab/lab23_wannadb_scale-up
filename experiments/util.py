@@ -1,7 +1,7 @@
 import pandas as pd
 
-from aset.data.data import ASETDocumentBase
-from aset.data.signals import NaturalLanguageLabelSignal, LabelSignal, CachedContextSentenceSignal
+from wannadb.data.data import DocumentBase
+from wannadb.data.signals import NaturalLanguageLabelSignal, LabelSignal, CachedContextSentenceSignal
 
 
 def consider_overlap_as_match(true_start, true_end, pred_start, pred_end):
@@ -20,7 +20,7 @@ def consider_overlap_as_match(true_start, true_end, pred_start, pred_end):
     return actual_overlap >= valid_overlap
 
 
-def create_dataframes_attributes_nuggets(document_base: ASETDocumentBase):
+def create_dataframes_attributes_nuggets(document_base: DocumentBase):
     for document in document_base.documents:
         attributes_and_matches_df = pd.DataFrame({
             "attribute": document_base.attributes,  # object ==> cannot be written to csv
