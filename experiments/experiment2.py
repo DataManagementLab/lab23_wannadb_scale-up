@@ -1,3 +1,4 @@
+import copy
 import json
 import logging.config
 import os
@@ -76,7 +77,7 @@ def run_experiment_2(index_types: List[str] = ["FLAT","IVF_FLAT","IVF_SQ8","GPU_
             u_attr_name: attr_name for u_attr_name, attr_name in zip(user_attribute_names, dataset.ATTRIBUTES)
         }
 
-        document_base = DocumentBase(
+        cached_document_base = DocumentBase(
             documents=[Document(doc["id"], doc["text"]) for doc in documents],
             attributes=[Attribute(attribute_name) for attribute_name in user_attribute_names]
         )
@@ -103,7 +104,7 @@ def run_experiment_2(index_types: List[str] = ["FLAT","IVF_FLAT","IVF_SQ8","GPU_
             statistics["preprocessing"]["config"] = wannadb_pipeline.to_config()
 
             wannadb_pipeline(
-                document_base=document_base,
+                document_base=cached_document_base,
                 interaction_callback=EmptyInteractionCallback(),
                 status_callback=EmptyStatusCallback(),
                 statistics=statistics["preprocessing"]
@@ -127,7 +128,7 @@ def run_experiment_2(index_types: List[str] = ["FLAT","IVF_FLAT","IVF_SQ8","GPU_
                                 f"exp-2-{dataset.NAME}-preprocessed.bson")
             try:
                 with open(path, "wb") as file:
-                    file.write(document_base.to_bson())
+                    file.write(cached_document_base.to_bson())
             except Exception as e:
                 print("Could not write document base to file.")
                 print(e)
@@ -135,11 +136,11 @@ def run_experiment_2(index_types: List[str] = ["FLAT","IVF_FLAT","IVF_SQ8","GPU_
             path = os.path.join(os.path.dirname(__file__), "..", "cache",
                                 f"exp-2-{dataset.NAME}-preprocessed.bson")
             with open(path, "rb") as file:
-                document_base = DocumentBase.from_bson(file.read())
+                cached_document_base = DocumentBase.from_bson(file.read())
 
         for attribute in dataset.ATTRIBUTES:
             statistics["preprocessing"]["results"]["num_extracted"][attribute] = 0
-            for document, wannadb_document in zip(documents, document_base.documents):
+            for document, wannadb_document in zip(documents, cached_document_base.documents):
                 match = False
                 for mention in document["mentions"][attribute]:
                     for nugget in wannadb_document.nuggets:
@@ -154,9 +155,12 @@ def run_experiment_2(index_types: List[str] = ["FLAT","IVF_FLAT","IVF_SQ8","GPU_
         ################################################################################################################
         # Load embeddings into vector database
         ################################################################################################################
-        
+        print("Start writing in VDB")
+        start_time = time.time()
         with vectordb() as vdb:
-            vdb.extract_nuggets(document_base)
+            vdb.extract_nuggets(cached_document_base)
+        extracting_nugget_time = time.time() - start_time
+        print("Finished writing in VDB:--- %s seconds ---" % (extracting_nugget_time))
         
 
         for index_type in index_types:
@@ -178,54 +182,57 @@ def run_experiment_2(index_types: List[str] = ["FLAT","IVF_FLAT","IVF_SQ8","GPU_
             pr = cProfile.Profile()
             pr.enable()
             start_time = time.time()
-    
+             
             with vectordb() as vb:
                 vdb.regenerate_index(index_type)
                 collection = Collection(EMBEDDING_COL_NAME)
                 collection.load()
 
                 for run, random_seed in enumerate(random_seeds):
+                    # load the document base
+                    document_base = copy.deepcopy(cached_document_base)
+                    
                     print("\n\n\nExecuting run {}.".format(run + 1))
 
                     # load the document base
-                    path = os.path.join(os.path.dirname(__file__), "..", "cache", f"exp-2-{dataset.NAME}-preprocessed.bson")
-                    with open(path, "rb") as file:
-                        document_base = DocumentBase.from_bson(file.read())
+                    # path = os.path.join(os.path.dirname(__file__), "..", "cache", f"exp-2-{dataset.NAME}-preprocessed.bson")
+                    # with open(path, "rb") as file:
+                    #     document_base = DocumentBase.from_bson(file.read())
 
                         
-                        wannadb_pipeline = Pipeline(
-                            [
-                                ContextSentenceCacher(),
-                                RankingBasedMatcherVDB(
-                                    max_num_feedback=10,
-                                    len_ranked_list=10,
-                                    max_distance=0.2,
-                                    num_random_docs=1,
-                                    sampling_mode="AT_MAX_DISTANCE_THRESHOLD",
-                                    vector_database = vb,
-                                    adjust_threshold=True,
-                                    embedding_identifier=[
-                                                    "LabelEmbeddingSignal",
-                                                    "TextEmbeddingSignal",
-                                                    "ContextSentenceEmbeddingSignal"
+                    wannadb_pipeline = Pipeline(
+                        [
+                            ContextSentenceCacher(),
+                            RankingBasedMatcherVDB(
+                                max_num_feedback=10,
+                                len_ranked_list=10,
+                                max_distance=0.2,
+                                num_random_docs=1,
+                                sampling_mode="AT_MAX_DISTANCE_THRESHOLD",
+                                vector_database = vb,
+                                adjust_threshold=True,
+                                embedding_identifier=[
+                                                "LabelEmbeddingSignal",
+                                                "TextEmbeddingSignal",
+                                                "ContextSentenceEmbeddingSignal"
 
-                                    ],
+                                ],
 
-                                    nugget_pipeline=Pipeline(
-                                        [
-                                            ContextSentenceCacher(),
-                                            CopyNormalizer(),
-                                            OntoNotesLabelParaphraser(),
-                                            SplitAttributeNameLabelParaphraser(do_lowercase=True, splitters=[" ", "_"]),
-                                            SBERTTextEmbedder("SBERTBertLargeNliMeanTokensResource"),
-                                            CombineEmbedder()
-                                        ]
-                                    )
+                                nugget_pipeline=Pipeline(
+                                    [
+                                        ContextSentenceCacher(),
+                                        CopyNormalizer(),
+                                        OntoNotesLabelParaphraser(),
+                                        SplitAttributeNameLabelParaphraser(do_lowercase=True, splitters=[" ", "_"]),
+                                        SBERTTextEmbedder("SBERTBertLargeNliMeanTokensResource"),
+                                        CombineEmbedder()
+                                    ]
                                 )
-                            ]
+                            )
+                        ]
                         )
 
-                        '''
+                    '''
                     wannadb_pipeline = Pipeline([
                     ContextSentenceCacher(),
                     RankingBasedMatcher(
@@ -464,3 +471,4 @@ def run_experiment_2(index_types: List[str] = ["FLAT","IVF_FLAT","IVF_SQ8","GPU_
             plt.savefig(path[:-5] + f"-durations-{index_type}.pdf", format="pdf", transparent=True)
         except:
             print("No durations plot")
+        print("Extracting nuggets to VDB:--- %s seconds ---" % (extracting_nugget_time))
