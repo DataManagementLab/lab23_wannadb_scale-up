@@ -13,8 +13,8 @@ from wannadb.data.data import Attribute, Document, DocumentBase
 from wannadb.interaction import EmptyInteractionCallback
 from wannadb.matching.distance import SignalsMeanDistance
 from wannadb.matching.matching import RankingBasedMatcher
-from wannadb.preprocessing.embedding import BERTContextSentenceEmbedder, FastTextLabelEmbedder, \
-    RelativePositionEmbedder, SBERTTextEmbedder
+from wannadb.preprocessing.embedding import BERTContextSentenceEmbedder, \
+    SBERTLabelEmbedder, SBERTTextEmbedder
 from wannadb.preprocessing.extraction import StanzaNERExtractor, SpacyNERExtractor
 from wannadb.preprocessing.label_paraphrasing import OntoNotesLabelParaphraser, SplitAttributeNameLabelParaphraser
 from wannadb.preprocessing.normalization import CopyNormalizer
@@ -73,22 +73,21 @@ def experiment_2():
         path = os.path.join(os.path.dirname(__file__), "..", "cache", f"exp-2-{dataset.NAME}-preprocessed.bson")
         if not os.path.isfile(path):
 
-            aset_pipeline = Pipeline([
+            wannadb_pipeline = Pipeline([
                 StanzaNERExtractor(),
                 SpacyNERExtractor("SpacyEnCoreWebLg"),
                 ContextSentenceCacher(),
                 CopyNormalizer(),
                 OntoNotesLabelParaphraser(),
                 SplitAttributeNameLabelParaphraser(do_lowercase=True, splitters=[" ", "_"]),
-                FastTextLabelEmbedder("FastTextEmbedding", True, [" ", "_"]),
+                SBERTLabelEmbedder("SBERTBertLargeNliMeanTokensResource"),
                 SBERTTextEmbedder("SBERTBertLargeNliMeanTokensResource"),
                 BERTContextSentenceEmbedder("BertLargeCasedResource"),
-                RelativePositionEmbedder()
             ])
 
-            statistics["preprocessing"]["config"] = aset_pipeline.to_config()
+            statistics["preprocessing"]["config"] = wannadb_pipeline.to_config()
 
-            aset_pipeline(
+            wannadb_pipeline(
                 document_base=document_base,
                 interaction_callback=EmptyInteractionCallback(),
                 status_callback=EmptyStatusCallback(),
@@ -142,36 +141,42 @@ def experiment_2():
             with open(path, "rb") as file:
                 document_base = DocumentBase.from_bson(file.read())
 
-            aset_pipeline = Pipeline([
-                SplitAttributeNameLabelParaphraser(do_lowercase=True, splitters=[" ", "_"]),
-                ContextSentenceCacher(),
-                FastTextLabelEmbedder("FastTextEmbedding", True, [" ", "_"]),
-                RankingBasedMatcher(
-                    distance=SignalsMeanDistance(
-                        signal_identifiers=[
-                            "LabelEmbeddingSignal",
-                            "TextEmbeddingSignal",
-                            "ContextSentenceEmbeddingSignal",
-                            "RelativePositionSignal"
-                        ]
-                    ),
-                    max_num_feedback=20,
-                    len_ranked_list=10,
-                    max_distance=0.2,  # 0.35
-                    num_random_docs=1,
-                    sampling_mode="AT_MAX_DISTANCE_THRESHOLD",  # "MOST_UNCERTAIN_WITH_RANDOMS"
-                    adjust_threshold=True
-                )
-            ])
+            wannadb_pipeline = Pipeline([
+                    ContextSentenceCacher(),
+                    RankingBasedMatcher(
+                        distance=SignalsMeanDistance(
+                            signal_identifiers=[
+                                "LabelEmbeddingSignal",
+                                "TextEmbeddingSignal",
+                                "ContextSentenceEmbeddingSignal"
+                            ]
+                        ),
+                        max_num_feedback=10,
+                        len_ranked_list=10,
+                        max_distance=0.2,  
+                        num_random_docs=1,
+                        sampling_mode="AT_MAX_DISTANCE_THRESHOLD",  
+                        adjust_threshold=True,
+                        nugget_pipeline=Pipeline(
+                                [
+                                    ContextSentenceCacher(),
+                                    CopyNormalizer(),
+                                    OntoNotesLabelParaphraser(),
+                                    SplitAttributeNameLabelParaphraser(do_lowercase=True, splitters=[" ", "_"]),
+                                    SBERTTextEmbedder("SBERTBertLargeNliMeanTokensResource"),
+                                ]
+                            )
+                        )
+                        ])
 
-            statistics["matching"]["config"] = aset_pipeline.to_config()
+            statistics["matching"]["config"] = wannadb_pipeline.to_config()
 
             # set the random seed
             random.seed(random_seed)
 
             logger.setLevel(logging.WARN)
 
-            aset_pipeline(
+            wannadb_pipeline(
                 document_base=document_base,
                 interaction_callback=AutomaticRandomRankingBasedMatchingFeedback(
                     documents,
