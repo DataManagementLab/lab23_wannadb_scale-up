@@ -1,7 +1,7 @@
 import random
 from typing import Dict, Any, List
 
-from aset.interaction import BaseInteractionCallback
+from wannadb.interaction import BaseInteractionCallback
 from experiments.util import consider_overlap_as_match
 
 
