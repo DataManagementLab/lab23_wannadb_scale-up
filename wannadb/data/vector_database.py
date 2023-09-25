@@ -183,11 +183,12 @@ class vectordb:
 
     def compute_inital_distances(self, attribute_embedding : List[float], document_base: DocumentBase) -> List[Document]:
         attribute_embedding = normalize(attribute_embedding.reshape(1,-1),norm='l2')
+        n_docs = len(document_base.documents)
         remaining_documents: List[Document] = []
-        collection = Collection(EMBEDDING_COL_NAME)
+        collection = Collection('embeddings')
 
         #Determine Limit
-        search_limit = len(document_base.documents)*20
+        search_limit = n_docs*20
 
         if search_limit < 16384:
  
@@ -200,12 +201,30 @@ class vectordb:
                 output_fields=['id','document_id'],
                 consistency_level="Strong"
             )
+
+            for i in results[0]: 
+                if len(remaining_documents) < n_docs:  
+                    current_document = document_base.documents[i.entity.get('document_id')]
+                    if not current_document in remaining_documents:
+                        current_nugget = i.entity.get('id')
+                        current_document[CurrentMatchIndexSignal] = CurrentMatchIndexSignal(current_nugget)
+                        current_document.nuggets[current_nugget][CachedDistanceSignal] = CachedDistanceSignal(1-i.distance)
+                        remaining_documents.append(current_document)
+                        logger.info(f"Appended nugget: {current_nugget}; To document {current_document.name} cached index: {current_document[CurrentMatchIndexSignal]}; Cached distance {current_document.nuggets[current_nugget][CachedDistanceSignal]}")
+                    else:
+                        continue
+                else:
+                    break
+
         else:
             results=[]
-            start_range = 0.975
+            step_size = 5000/search_limit
+            start_range = 1-step_size
             end_range = 1.0
+            limit_counter =0
 
-            while len(results) < search_limit or start_range == 0:
+
+            while (start_range > 0.0) and (limit_counter < search_limit): 
                 search_param = {
                     "data": attribute_embedding, 
                     "anns_field": "embedding_value", 
@@ -213,23 +232,33 @@ class vectordb:
                     "limit": 16384,
                     "output_fields": ["id", "document_id"] 
                     }
+                
 
                 res = collection.search(**search_param)
                 results.append(res[0])
-                start_range= start_range-0.025
-                end_range = end_range-0.025
+                start_range= start_range-step_size
+                end_range = end_range-step_size
+                limit_counter = limit_counter + len(res[0])
 
-
-        for i in results[0]:   
-            current_document = document_base.documents[i.entity.get('document_id')]
-            if not current_document in remaining_documents:
-                current_nugget = i.entity.get('id')
-                current_document[CurrentMatchIndexSignal] = CurrentMatchIndexSignal(current_nugget)
-                current_document.nuggets[current_nugget][CachedDistanceSignal] = CachedDistanceSignal(1-i.distance)
-                remaining_documents.append(current_document)
-                logger.info(f"Appended nugget: {current_nugget}; To document {current_document.name} cached index: {current_document[CurrentMatchIndexSignal]}; Cached distance {current_document.nuggets[current_nugget][CachedDistanceSignal]}")
-            else:
-                continue
+            
+            flag = False
+            for search_hit in results:
+                for i in search_hit:
+                    if len(remaining_documents) < n_docs:
+                        current_document = document_base.documents[i.entity.get('document_id')]
+                        if not current_document in remaining_documents:
+                            current_nugget = i.entity.get('id')
+                            current_document[CurrentMatchIndexSignal] = CurrentMatchIndexSignal(current_nugget)
+                            current_document.nuggets[current_nugget][CachedDistanceSignal] = CachedDistanceSignal(1-i.distance)
+                            remaining_documents.append(current_document)
+                            logger.info(f"Appended nugget: {current_nugget}; To document {current_document.name} cached index: {current_document[CurrentMatchIndexSignal]}; Cached distance {current_document.nuggets[current_nugget][CachedDistanceSignal]}")
+                        else:
+                            continue
+                    else:
+                        flag =True
+                        break
+                if flag:
+                    break
 
         return remaining_documents
 
@@ -237,13 +266,13 @@ class vectordb:
     
     def updating_distances_documents(self, target_embedding: List[float], documents: List[Document], document_base : DocumentBase):
         target_embedding = normalize(target_embedding.reshape(1,-1), norm = 'l2')
-
-        collection = Collection(EMBEDDING_COL_NAME)
+        n_docs= len(documents)
+        collection = Collection('embeddings')
         doc_indexes = [doc.index for doc in documents]
         processed = [] 
 
-        search_limit = len(documents)*3
-
+        search_limit = n_docs*5
+        
         if search_limit < 16384:
 
             #Compute the distance between the embeddings of the attribute and the embeddings of the nuggets
@@ -257,67 +286,69 @@ class vectordb:
                 consistency_level="Strong"
             )
 
+            for i in results[0]:
+                current_document = document_base.documents[i.entity.get('document_id')]
+                if not current_document in processed:
+                    current_nugget = i.entity.get('id')
+                    distance = 1-i.distance
+                    if 'CurrentMatchIndexSignal' in current_document.signals:
+                        if distance < current_document.nuggets[current_document[CurrentMatchIndexSignal]][CachedDistanceSignal]:
+                            current_document[CurrentMatchIndexSignal] = CurrentMatchIndexSignal(current_nugget)
+                            current_document.nuggets[current_nugget][CachedDistanceSignal] = CachedDistanceSignal(distance)
+                        else:
+                            continue
+                    else:
+                        current_document[CurrentMatchIndexSignal] = CurrentMatchIndexSignal(current_nugget)
+                        current_document.nuggets[current_nugget][CachedDistanceSignal] = CachedDistanceSignal(distance)
+                else:
+                    continue
+
         else:
             results=[]
-            start_range = 0.05
+            step_size = 5000/search_limit
+            start_range = 1-step_size
+            end_range = 1.0
+            limit_counter =0
 
-            while len(results) < search_limit:
+            while (start_range > 0.0) and (limit_counter < search_limit ): #anpassen
                 search_param = {
                     "data": target_embedding, 
                     "anns_field": "embedding_value", 
-                    "param": { "metric_type": "COSINE", "params": { "radius": 0.0, "range_filter" : start_range }, "offset": 0 },
+                    "param": { "metric_type": "COSINE", "params": { "radius": start_range, "range_filter" : end_range }, "offset": 0 },
                     "limit": 16384,
                     "output_fields": ["id", "document_id"] 
                     }
 
                 res = collection.search(**search_param)
                 results.append(res[0])
+                start_range= start_range-step_size
+                end_range = end_range-step_size
+                limit_counter = limit_counter + len(res[0])
 
-
-        for i in results[0]:
-            current_document = document_base.documents[i.entity.get('document_id')]
-            print(f"Current Document: {current_document.name}")
-
-            if not current_document in processed:
-                #print(F"Not already processed")
-                current_nugget = i.entity.get('id')
-                distance = 1-i.distance
-                #print(f"Current Nugget: {i.entity.get('id')} Distance: {distance}")
-                
-                '''
-                res = full_collection.query(
-                    expr = f"id == {i.entity.get('id')} and document_id == {i.entity.get('document_id')}",
-                    offset = 0,
-                    limit = 1, 
-                    output_fields = ["id", "document_id", 'embedding_value']
-                    )
-                
-                print(f"Query nugget id: {res[0]['id']}; document_id: {res[0]['document_id']}")
-                
-                if (res[0]['document_id'] == i.entity.get('document_id')) and (res[0]['id'] ==i.entity.get('id')):
-                    matrix = np.vstack((target_embedding, res[0]['embedding_value']))
-                    cosine_distance = cosine_distances(matrix)
-                    print(f"Custome Cosine Distance for nugget: {res[0]['id']}; Distance {cosine_distance[0, 1]}")
-               '''
-
-                if 'CurrentMatchIndexSignal' in current_document.signals:
-                    #print(f"Document: {current_document.name} contains CurrentMatchIndex: {current_document[CurrentMatchIndexSignal]} best distance: {current_document.nuggets[current_document[CurrentMatchIndexSignal]][CachedDistanceSignal]}")
-                    if distance < current_document.nuggets[current_document[CurrentMatchIndexSignal]][CachedDistanceSignal]:
-                        #print(f"Neue Distanz: {distance} kleiner als alte Distanz: {current_document.nuggets[current_document[CurrentMatchIndexSignal]][CachedDistanceSignal]}")
-                        current_document[CurrentMatchIndexSignal] = CurrentMatchIndexSignal(current_nugget)
-                        current_document.nuggets[current_nugget][CachedDistanceSignal] = CachedDistanceSignal(distance)
-                        #print(f"Neuer Currentindex: {current_document[CurrentMatchIndexSignal]}, Neue Distanz: {current_document.nuggets[current_document[CurrentMatchIndexSignal]][CachedDistanceSignal]}")
+            flag = False
+            for search_hit in results:
+                for i in search_hit:
+                    if len(processed) < n_docs:
+                        current_document = document_base.documents[i.entity.get('document_id')]
+                        if not current_document in processed:
+                            current_nugget = i.entity.get('id')
+                            distance = 1-i.distance
+                            if 'CurrentMatchIndexSignal' in current_document.signals:
+                                if distance < current_document.nuggets[current_document[CurrentMatchIndexSignal]][CachedDistanceSignal]:
+                                    current_document[CurrentMatchIndexSignal] = CurrentMatchIndexSignal(current_nugget)
+                                    current_document.nuggets[current_nugget][CachedDistanceSignal] = CachedDistanceSignal(distance)
+                                else:
+                                    continue
+                            else:
+                                current_document[CurrentMatchIndexSignal] = CurrentMatchIndexSignal(current_nugget)
+                                current_document.nuggets[current_nugget][CachedDistanceSignal] = CachedDistanceSignal(distance)
+                        else:
+                            continue
                     else:
-                        #print(f"Neue Distanz: {distance} größer als alte Distanz: {current_document.nuggets[current_document[CurrentMatchIndexSignal]][CachedDistanceSignal]}")
-                        continue
-                else:
-                    #print("CurrentIndex noch nicht drin")
-                    current_document[CurrentMatchIndexSignal] = CurrentMatchIndexSignal(current_nugget)
-                    current_document.nuggets[current_nugget][CachedDistanceSignal] = CachedDistanceSignal(distance)
-                    #print(f"Neuer Current Index: { current_document[CurrentMatchIndexSignal]}; Neue Cached Distanz: {current_document.nuggets[current_nugget][CachedDistanceSignal]}")
-            else:
-                #print(f"Already processed!")
-                continue
+                        flag =True
+                        break
+                if flag:
+                    break
 
     def regenerate_index(self, index_name, collection_name = EMBEDDING_COL_NAME):
         self._index_params["index_type"] = index_name
