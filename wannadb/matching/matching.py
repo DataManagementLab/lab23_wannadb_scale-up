@@ -5,6 +5,7 @@ import time
 from typing import Any, Dict, List, Callable, Tuple
 
 import numpy as np
+from experiments.automatic_feedback import AutomaticRandomRankingBasedMatchingFeedback
 
 from wannadb.configuration import BasePipelineElement, register_configurable_element, Pipeline
 from wannadb.data.data import Document, DocumentBase, InformationNugget
@@ -105,18 +106,19 @@ class RankingBasedMatcher(BaseMatcher):
         statistics["num_nuggets"] = len(document_base.nuggets)
 
         for attribute in document_base.attributes:
-            feedback_result: Dict[str, Any] = interaction_callback(
-                self.identifier,
-                {
-                    "do-attribute-request": None,
-                    "attribute": attribute
-                }
-            )
+            if not isinstance(interaction_callback, AutomaticRandomRankingBasedMatchingFeedback):
+                feedback_result: Dict[str, Any] = interaction_callback(
+                    self.identifier,
+                    {
+                        "do-attribute-request": None,
+                        "attribute": attribute
+                    }
+                )
 
-            if not feedback_result["do-attribute"]:
-                logger.info(f"Skip attribute '{attribute.name}'.")
-                statistics[attribute.name]["skipped"] = True
-                continue
+                if not feedback_result["do-attribute"]:
+                    logger.info(f"Skip attribute '{attribute.name}'.")
+                    statistics[attribute.name]["skipped"] = True
+                    continue
 
             logger.info(f"Matching attribute '{attribute.name}'.")
             self._max_distance = self._default_max_distance
