@@ -173,7 +173,7 @@ def run_experiment_2(index_types: List[str] = ["FLAT","IVF_FLAT","IVF_SQ8","GPU_
                 statistics["matching"]["results"]["considered_as_match"][attribute_name] = set()
 
             # random seeds have been randomly chosen once from [0, 1000000]
-            random_seeds = [200488, 422329, 449756, 739608, 983889, 836016, 264198, 908457, 205619, 461905]
+            random_seeds = [200488, 422329, 449756]#, 739608, 983889], 836016, 264198, 908457, 205619, 461905]
             #random_seeds = [794009, 287762, 880883, 663238, 137616, 543468, 329177, 322737, 343909, 824474, 220481,
             #               832096,
             #                962731, 345784, 317557, 696622, 675696, 467273, 475463, 540128]
@@ -183,7 +183,7 @@ def run_experiment_2(index_types: List[str] = ["FLAT","IVF_FLAT","IVF_SQ8","GPU_
             pr.enable()
             start_time = time.time()
              
-            with vectordb() as vb:
+            with vectordb() as vdb:
                 vdb.regenerate_index(index_type)
                 collection = Collection(EMBEDDING_COL_NAME)
                 collection.load()
@@ -209,7 +209,7 @@ def run_experiment_2(index_types: List[str] = ["FLAT","IVF_FLAT","IVF_SQ8","GPU_
                                 max_distance=0.2,
                                 num_random_docs=1,
                                 sampling_mode="AT_MAX_DISTANCE_THRESHOLD",
-                                vector_database = vb,
+                                vector_database = vdb,
                                 adjust_threshold=True,
                                 embedding_identifier=[
                                                 "LabelEmbeddingSignal",
