@@ -1,3 +1,4 @@
+import copy
 import json
 import logging.config
 import os
@@ -62,7 +63,7 @@ def experiment_2():
             u_attr_name: attr_name for u_attr_name, attr_name in zip(user_attribute_names, dataset.ATTRIBUTES)
         }
 
-        document_base = DocumentBase(
+        cached_document_base = DocumentBase(
             documents=[Document(doc["id"], doc["text"]) for doc in documents],
             attributes=[Attribute(attribute_name) for attribute_name in user_attribute_names]
         )
@@ -88,25 +89,30 @@ def experiment_2():
             statistics["preprocessing"]["config"] = wannadb_pipeline.to_config()
 
             wannadb_pipeline(
-                document_base=document_base,
+                document_base=cached_document_base,
                 interaction_callback=EmptyInteractionCallback(),
                 status_callback=EmptyStatusCallback(),
                 statistics=statistics["preprocessing"]
             )
 
-            path = os.path.join(os.path.dirname(__file__), "..", "cache",
-                                f"exp-2-{dataset.NAME}-preprocessed.bson")
-            with open(path, "wb") as file:
-                file.write(document_base.to_bson())
+            
+            # path = os.path.join(os.path.dirname(__file__), "..", "cache",
+            #                     f"exp-2-{dataset.NAME}-preprocessed.bson")
+            # try:
+            #     with open(path, "wb") as file:
+            #         file.write(document_base.to_bson())
+            # except Exception as e:
+            #     print(e)
+            #     print("Could not write document base to file. Continuing without writing.")
         else:
             path = os.path.join(os.path.dirname(__file__), "..", "cache",
                                 f"exp-2-{dataset.NAME}-preprocessed.bson")
             with open(path, "rb") as file:
-                document_base = DocumentBase.from_bson(file.read())
+                cached_document_base = DocumentBase.from_bson(file.read())
 
         for attribute in dataset.ATTRIBUTES:
             statistics["preprocessing"]["results"]["num_extracted"][attribute] = 0
-            for document, aset_document in zip(documents, document_base.documents):
+            for document, aset_document in zip(documents, cached_document_base.documents):
                 match = False
                 for mention in document["mentions"][attribute]:
                     for nugget in aset_document.nuggets:
@@ -137,10 +143,11 @@ def experiment_2():
             print("\n\n\nExecuting run {}.".format(run + 1))
 
             # load the document base
-            path = os.path.join(os.path.dirname(__file__), "..", "cache", f"exp-2-{dataset.NAME}-preprocessed.bson")
-            with open(path, "rb") as file:
-                document_base = DocumentBase.from_bson(file.read())
-
+            # path = os.path.join(os.path.dirname(__file__), "..", "cache", f"exp-2-{dataset.NAME}-preprocessed.bson")
+            # with open(path, "rb") as file:
+            #     document_base = DocumentBase.from_bson(file.read())
+            document_base = copy.deepcopy(cached_document_base)
+            
             wannadb_pipeline = Pipeline([
                     ContextSentenceCacher(),
                     RankingBasedMatcher(
