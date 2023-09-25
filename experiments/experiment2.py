@@ -155,12 +155,12 @@ def run_experiment_2(index_types: List[str] = ["FLAT","IVF_FLAT","IVF_SQ8","GPU_
         ################################################################################################################
         # Load embeddings into vector database
         ################################################################################################################
-        print("Start writing in VDB")
-        start_time = time.time()
-        with vectordb() as vdb:
-            vdb.extract_nuggets(cached_document_base)
-        extracting_nugget_time = time.time() - start_time
-        print("Finished writing in VDB:--- %s seconds ---" % (extracting_nugget_time))
+        # print("Start writing in VDB")
+        # start_time = time.time()
+        # with vectordb() as vdb:
+        #     vdb.extract_nuggets(cached_document_base)
+        # extracting_nugget_time = time.time() - start_time
+        # print("Finished writing in VDB:--- %s seconds ---" % (extracting_nugget_time))
         
 
         for index_type in index_types:
