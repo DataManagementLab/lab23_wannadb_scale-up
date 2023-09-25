@@ -33,7 +33,7 @@ from wannadb.preprocessing.other_processing import ContextSentenceCacher, Combin
 from wannadb.resources import ResourceManager
 from wannadb.statistics import Statistics
 from wannadb.status import EmptyStatusCallback
-import datasets.skyscraper.skyscraper as dataset
+import datasets.wikipedia.wikipedia as dataset
 from experiments.automatic_feedback import AutomaticRandomRankingBasedMatchingFeedback
 from experiments.baselines.baseline_bart_seq2seq import calculate_f1_scores
 from experiments.util import consider_overlap_as_match
@@ -55,7 +55,7 @@ def run_experiment_2(index_types: List[str] = ["FLAT","IVF_FLAT","IVF_SQ8","GPU_
         ################################################################################################################
         # dataset
         ################################################################################################################
-        documents = dataset.load_dataset()
+        documents = dataset.load_dataset("medium_large")
 
         statistics["dataset"]["dataset_name"] = dataset.NAME
         statistics["dataset"]["attributes"] = dataset.ATTRIBUTES
