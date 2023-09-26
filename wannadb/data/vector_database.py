@@ -357,11 +357,13 @@ class vectordb:
         collection = Collection(collection_name)
         nlist = 4 * int(np.sqrt(collection.num_entities))
         self._index_params["params"]["nlist"] = nlist
+        reload_col = False
         try:
             collection.drop_index()
         except:
             try:
                 collection.release()
+                reload_col= True
             except:
                 pass
             collection.drop_index()
@@ -370,6 +372,10 @@ class vectordb:
             field_name='embedding_value', 
             index_params=self._index_params
             )
+
+        if reload_col:
+            collection.load()
+            
 
 def generate_and_store_embedding(input_path):
     
