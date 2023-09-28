@@ -5,8 +5,11 @@ import datetime
 import json
 import os
 import time
+from matplotlib import pyplot as plt
 
+import seaborn as sns
 import numpy as np
+import pandas as pd
 from pymilvus import Collection
 from wannadb.data.vector_database import EMBEDDING_COL_NAME, compute_embedding_distances, compute_embedding_distances_withoutVDB, generate_and_store_embedding, generate_new_index, vectordb
 
@@ -49,15 +52,15 @@ def test_indicies(as_json=True):
                 collection = Collection(EMBEDDING_COL_NAME)
                 collection.load()
                 start = time.time()
-                vdb.compute_inital_distances(combined_embedding, document_base)
+                remaining_documents, search_time_init, update_base_time_init = vdb.compute_inital_distances(combined_embedding, document_base, True)
                 duration_imit = time.time() - start
-                vdb.updating_distances_documents(combined_embedding, document_base.documents, document_base)
+                search_time_update, update_base_time_update = vdb.updating_distances_documents(combined_embedding, document_base.documents, document_base, True)
                 duration_iupdate = time.time() - start - duration_imit
                 collection.release()
             
             
-            results[index_type] = {"init":duration_imit,
-                                   "update":duration_iupdate}
+            results[index_type] = {"init": {"search_time":search_time_init, "update_base_time":update_base_time_init, "duration":duration_imit},
+                                   "update":{"search_time":search_time_update, "update_base_time":update_base_time_update, "duration":duration_iupdate}}
         except Exception as e:
             print(e)
             print(index_type)
@@ -69,6 +72,78 @@ def test_indicies(as_json=True):
     
     else:  
         generate_sheet_from_json(results)
+        
+        
+def generate_pdf(path = "indexupdate_tests.json"):
+    with open(path, "r") as f:
+        results = json.load(f)
+        index_types = []
+        index_type_durations = []
+        index_typesend = []
+        index_type_durationsend = []
+        stype = []
+        stypeend = []
+        uitt = []
+        for name, durations in results.items():
+            for search_type, durations in durations.items():
+                index_types.append(name)
+                index_types.append(name)
+                index_type_durations.append(durations["search_time"])
+                index_type_durations.append(durations["update_base_time"])
+                stype.append(search_type)
+                stype.append(search_type)
+                uitt.append("index")
+                uitt.append("update_documents")
+            
+        index_types.extend(index_typesend)
+        index_type_durations.extend(index_type_durationsend)
+        stype.extend(stypeend)
+            
+        df = pd.DataFrame({"used_index":index_types, "duration":index_type_durations, "stype":stype, "used_index_time_type":uitt})
+        
+        labels=df['used_index'].drop_duplicates()  # set the dates as labels
+        x0 = np.arange(len(labels))  # create an array of values for the ticks that can perform arithmetic with width (w)
+
+        
+        # create the data groups with a dict comprehension and groupby
+        data = {''.join(k): v for k, v in df.groupby(['stype', 'used_index_time_type'])}
+
+        # build the plots
+        subs = df.stype.unique()
+        stacks = len(subs)  # how many stacks in each group for a tick location
+        business = df.used_index_time_type.unique()
+
+        # set the width
+        w = 0.35
+
+        # this needs to be adjusted based on the number of stacks; each location needs to be split into the proper number of locations
+        x1 = [x0 - w/stacks, x0 + w/stacks]
+
+        fig, ax = plt.subplots()
+        for x, sub in zip(x1, subs):
+            bottom = 0
+            for bus in business:
+                height = data[f'{sub}{bus}'].duration.to_numpy()
+                ax.bar(x=x, height=height, width=w, bottom=bottom)
+                bottom += height
+                
+        ax.set_xticks(x0)
+        _ = ax.set_xticklabels(labels)
+        
+        plt.gca().legend(('init search','init store','update search','update store'))
+        
+        # _, ax = plt.subplots(figsize=(7, 5))
+        # sns.barplot(x="Index", y="Duration",hue="Type",data=df, ax=ax)
+        ax.set_ylabel("Duration in seconds")
+        ax.set_title("Durations per Index Type", size=12)
+        # ax.tick_params(axis="x", labelsize=7)
+        # plt.xticks(rotation=20, ha='right')
+        # plt.subplots_adjust(0.09, 0.15, 0.99, 0.94)
+        
+        for i in ax.containers:
+            ax.bar_label(i,fmt='%.2f',label_type='center')
+
+        plt.savefig(f"Durations-per_index.pdf", format="pdf", transparent=True)
     
 def sheet_from_file():
     with open('index_tests.json', 'r') as fp:

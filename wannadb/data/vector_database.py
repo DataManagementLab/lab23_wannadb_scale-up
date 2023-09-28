@@ -181,7 +181,7 @@ class vectordb:
         logger.info("Embedding insertion finished")
 
 
-    def compute_inital_distances(self, attribute_embedding : List[float], document_base: DocumentBase) -> List[Document]:
+    def compute_inital_distances(self, attribute_embedding : List[float], document_base: DocumentBase, return_times:bool = False) -> List[Document]:
         attribute_embedding = normalize(attribute_embedding.reshape(1,-1),norm='l2')
         n_docs = len(document_base.documents)
         remaining_documents: List[Document] = []
@@ -189,7 +189,7 @@ class vectordb:
 
         #Determine Limit
         search_limit = n_docs*20
-
+        start_time = time.time()
         if search_limit < 16384:
  
             results = collection.search(
@@ -201,7 +201,7 @@ class vectordb:
                 output_fields=['id','document_id'],
                 consistency_level="Strong"
             )
-
+            search_time = time.time() - start_time
             for i in results[0]: 
                 if len(remaining_documents) < n_docs:  
                     current_document = document_base.documents[i.entity.get('document_id')]
@@ -240,6 +240,7 @@ class vectordb:
                 end_range = end_range-step_size
                 limit_counter = limit_counter + len(res[0])
 
+            search_time = time.time() - start_time
             
             flag = False
             for search_hit in results:
@@ -259,12 +260,15 @@ class vectordb:
                         break
                 if flag:
                     break
-
-        return remaining_documents
-
+        
+        update_base_time = time.time() - start_time - search_time
+        if return_times:
+            return remaining_documents, search_time, update_base_time
+        else:
+            return remaining_documents
 
     
-    def updating_distances_documents(self, target_embedding: List[float], documents: List[Document], document_base : DocumentBase):
+    def updating_distances_documents(self, target_embedding: List[float], documents: List[Document], document_base : DocumentBase, return_times:bool = False):
         target_embedding = normalize(target_embedding.reshape(1,-1), norm = 'l2')
         n_docs= len(documents)
         collection = Collection('embeddings')
@@ -275,6 +279,7 @@ class vectordb:
         if search_limit == 0:
             return
         
+        start_time = time.time()
         if search_limit < 16384:
 
             #Compute the distance between the embeddings of the attribute and the embeddings of the nuggets
@@ -288,6 +293,8 @@ class vectordb:
                 consistency_level="Strong"
             )
 
+            search_time = time.time() - start_time
+            
             for i in results[0]:
                 current_document = document_base.documents[i.entity.get('document_id')]
                 if not current_document in processed:
@@ -327,6 +334,8 @@ class vectordb:
                 end_range = end_range-step_size
                 limit_counter = limit_counter + len(res[0])
 
+            search_time = time.time() - start_time
+            
             flag = False
             for search_hit in results:
                 for i in search_hit:
@@ -351,6 +360,10 @@ class vectordb:
                         break
                 if flag:
                     break
+                
+        update_base_time = time.time() - start_time - search_time
+        if return_times:
+            return search_time, update_base_time
 
     def regenerate_index(self, index_name, collection_name = EMBEDDING_COL_NAME):
         self._index_params["index_type"] = index_name
