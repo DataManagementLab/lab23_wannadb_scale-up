@@ -1,14 +1,18 @@
 import abc
 import json
 import logging
+import os
 from typing import Any, Dict, List
 
 import requests
+import spacy
+import stanza
+from spacy import Language
 from spacy.tokens import Doc
 
 from wannadb import resources
 from wannadb.configuration import register_configurable_element, BasePipelineElement
-from wannadb.data.data import DocumentBase, InformationNugget
+from wannadb.data.data import DocumentBase, InformationNugget, Document
 from wannadb.data.signals import LabelSignal, POSTagsSignal, SentenceStartCharsSignal
 from wannadb.interaction import BaseInteractionCallback
 from wannadb.resources import StanzaNERPipeline, FigerNERPipeline
@@ -60,44 +64,36 @@ class SpacyNERExtractor(BaseExtractor):
         self._spacy_resource_identifier: str = spacy_resource_identifier
 
         # preload required resources
-        resources.MANAGER.load(self._spacy_resource_identifier)
-        logger.debug(f"Initialized '{self.identifier}'.")
+        self._spacy_nlp: Language = spacy.load("en_core_web_lg")
+        print(f"Initialized '{self.identifier}'.")
 
     def _call(
             self,
-            document_base: DocumentBase,
-            interaction_callback: BaseInteractionCallback,
-            status_callback: BaseStatusCallback,
-            statistics: Statistics
-    ) -> None:
-        statistics["num_documents"] = len(document_base.documents)
+            document: Document
+    ) -> [InformationNugget]:
+        print("Spacy_NER: DOCUMENT:{} --- PIPELINE_PID:{}".format(document.name, os.getppid()))
+        spacy_output: Doc = self._spacy_nlp(document.text)
+        sentence_start_chars: List[int] = []
 
-        for ix, document in enumerate(document_base.documents):
-            self._use_status_callback(status_callback, ix, len(document_base.documents))
+        # transform the spacy output into the document and nuggets
+        for sentence in spacy_output.sents:
+            sentence_start_chars.append(sentence.start_char)
 
-            spacy_output: Doc = resources.MANAGER[self._spacy_resource_identifier](document.text)
-            sentence_start_chars: List[int] = []
+        document[SentenceStartCharsSignal] = SentenceStartCharsSignal(sentence_start_chars)
 
-            # transform the spacy output into the document and nuggets
-            for sentence in spacy_output.sents:
-                sentence_start_chars.append(sentence.start_char)
+        nuggets: [InformationNugget] = []
+        for entity in spacy_output.ents:
+            nugget: InformationNugget = InformationNugget(
+                document=document,
+                start_char=entity.start_char,
+                end_char=entity.end_char
+            )
 
-            document[SentenceStartCharsSignal] = SentenceStartCharsSignal(sentence_start_chars)
+            nugget[POSTagsSignal] = POSTagsSignal([])  # TODO: gather pos tags
+            nugget[LabelSignal] = LabelSignal(entity.label_)
 
-            for entity in spacy_output.ents:
-                nugget: InformationNugget = InformationNugget(
-                    document=document,
-                    start_char=entity.start_char,
-                    end_char=entity.end_char
-                )
-
-                nugget[POSTagsSignal] = POSTagsSignal([])  # TODO: gather pos tags
-                nugget[LabelSignal] = LabelSignal(entity.label_)
-
-                document.nuggets.append(nugget)
-
-                statistics["num_nuggets"] += 1
-                statistics["spacy_entity_type_dist"][entity.label_] += 1
+            nuggets.append(nugget)
+        return nuggets
 
     def to_config(self) -> Dict[str, Any]:
         return {
@@ -133,45 +129,40 @@ class StanzaNERExtractor(BaseExtractor):
         super(StanzaNERExtractor, self).__init__()
 
         # preload required resources
-        resources.MANAGER.load(StanzaNERPipeline)
-        logger.debug(f"Initialized '{self.identifier}'.")
+        path: str = os.path.join(os.path.dirname(__file__), "../..", "models", "stanza")
+        self._nlp = stanza.Pipeline(
+            lang="en", processors="tokenize,mwt,pos,ner", model_dir=path, verbose=False
+        )
+        print(f"Initialized '{self.identifier}'.")
 
     def _call(
             self,
-            document_base: DocumentBase,
-            interaction_callback: BaseInteractionCallback,
-            status_callback: BaseStatusCallback,
-            statistics: Statistics
-    ) -> None:
-        statistics["num_documents"] = len(document_base.documents)
+            document: Document
+    ) -> [InformationNugget]:
+        print("Stanza_NER: DOCUMENT:{} --- PIPELINE_PID:{}".format(document.name, os.getppid()))
+        stanza_output = self._nlp(document.text)
 
-        for ix, document in enumerate(document_base.documents):
-            self._use_status_callback(status_callback, ix, len(document_base.documents))
+        sentence_start_chars: List[int] = []
 
-            stanza_output = resources.MANAGER[StanzaNERPipeline](document.text)
+        # transform the stanza output into the document and nuggets
+        nuggets: [InformationNugget] = []
+        for sentence in stanza_output.sentences:
+            sentence_start_chars.append(sentence.tokens[0].start_char)
 
-            sentence_start_chars: List[int] = []
+            for entity in sentence.entities:
+                nugget: InformationNugget = InformationNugget(
+                    document=document,
+                    start_char=entity.start_char,
+                    end_char=entity.start_char + len(entity.text)
+                )
 
-            # transform the stanza output into the document and nuggets
-            for sentence in stanza_output.sentences:
-                sentence_start_chars.append(sentence.tokens[0].start_char)
+                nugget[POSTagsSignal] = POSTagsSignal([word.xpos for word in entity.words])
+                nugget[LabelSignal] = LabelSignal(entity.type)
 
-                for entity in sentence.entities:
-                    nugget: InformationNugget = InformationNugget(
-                        document=document,
-                        start_char=entity.start_char,
-                        end_char=entity.start_char + len(entity.text)
-                    )
+                nuggets.append(nugget)
 
-                    nugget[POSTagsSignal] = POSTagsSignal([word.xpos for word in entity.words])
-                    nugget[LabelSignal] = LabelSignal(entity.type)
-
-                    document.nuggets.append(nugget)
-
-                    statistics["num_nuggets"] += 1
-                    statistics["stanza_entity_type_dist"][entity.type] += 1
-
-            document[SentenceStartCharsSignal] = SentenceStartCharsSignal(sentence_start_chars)
+        document[SentenceStartCharsSignal] = SentenceStartCharsSignal(sentence_start_chars)
+        return nuggets
 
     def to_config(self) -> Dict[str, Any]:
         return {

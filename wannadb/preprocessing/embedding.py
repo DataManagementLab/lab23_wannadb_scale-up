@@ -1,15 +1,19 @@
 import abc
 import logging
+import os
 import time
 from functools import partial
 from itertools import count
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Union
 
 import numpy as np
+import torch
+from sentence_transformers import SentenceTransformer
+from transformers import BertTokenizer, BertTokenizerFast, BertModel
 
 from wannadb import resources
 from wannadb.configuration import BasePipelineElement, register_configurable_element
-from wannadb.data.data import Attribute, DocumentBase, InformationNugget
+from wannadb.data.data import Attribute, DocumentBase, InformationNugget, Document
 from wannadb.data.signals import ContextSentenceEmbeddingSignal, LabelEmbeddingSignal, RelativePositionSignal, \
     TextEmbeddingSignal, UserProvidedExamplesSignal, NaturalLanguageLabelSignal, CachedContextSentenceSignal
 from wannadb.interaction import BaseInteractionCallback
@@ -51,43 +55,25 @@ class BaseEmbedder(BasePipelineElement, abc.ABC):
             if interval != 0 and ix % interval == 0:
                 status_callback(f"Embedding {element} with {self.identifier}...", ix / total)
 
-    def _call(
-            self,
-            document_base: DocumentBase,
-            interaction_callback: BaseInteractionCallback,
-            status_callback: BaseStatusCallback,
-            statistics: Statistics
-    ) -> None:
-        # compute embeddings for the nuggets
-        nuggets: List[InformationNugget] = document_base.nuggets
-        logger.info(f"Embed {len(nuggets)} nuggets with {self.identifier}.")
-        tick: float = time.time()
-        status_callback(f"Embedding nuggets with {self.identifier}...", -1)
-        statistics["nuggets"]["num_nuggets"] = len(nuggets)
-        self._embed_nuggets(nuggets, interaction_callback, status_callback, statistics["nuggets"])
-        status_callback(f"Embedding nuggets with {self.identifier}...", 1)
-        tack: float = time.time()
-        logger.info(f"Embedded {len(nuggets)} nuggets with {self.identifier} in {tack - tick} seconds.")
-        statistics["nuggets"]["runtime"] = tack - tick
+    def __call__(self, nugget_holder):
+        while True:
+            document = self.input_queue.get()
 
-        # compute embeddings for the attributes
-        attributes: List[Attribute] = document_base.attributes
-        logger.info(f"Embed {len(attributes)} attributes with {self.identifier}.")
-        tick: float = time.time()
-        status_callback(f"Embedding attributes with {self.identifier}...", -1)
-        statistics["attributes"]["num_attributes"] = len(attributes)
-        self._embed_attributes(attributes, interaction_callback, status_callback, statistics["attributes"])
-        status_callback(f"Embedding attributes with {self.identifier}...", 1)
-        tack: float = time.time()
-        logger.info(f"Embedded {len(attributes)} attributes with {self.identifier} in {tack - tick} seconds.")
-        statistics["attributes"]["runtime"] = tack - tick
+            if document is None:
+                if self.next_pipeline_element is not None:
+                    self.next_pipeline_element.input_queue.put(None)
+                break
+            print("{}: DOCUMENT:{} --- PIPELINE_PID:{}".format(self.identifier, document.name, os.getppid()))
+            nuggets: [InformationNugget] = nugget_holder[document.name]
+            self._embed_nuggets(nuggets)
+            nugget_holder[document.name] = nuggets  # Overwrite current dir entry
+
+            if self.next_pipeline_element is not None:
+                self.next_pipeline_element.input_queue.put(document)
 
     def _embed_nuggets(
             self,
             nuggets: List[InformationNugget],
-            interaction_callback: BaseInteractionCallback,
-            status_callback: BaseStatusCallback,
-            statistics: Statistics
     ) -> None:
         """
         Compute embeddings for the given list of nuggets.
@@ -136,8 +122,8 @@ class BaseSBERTEmbedder(BaseEmbedder, abc.ABC):
         self._sbert_resource_identifier: str = sbert_resource_identifier
 
         # preload required resources
-        resources.MANAGER.load(self._sbert_resource_identifier)
-        logger.debug(f"Initialized '{self.identifier}'.")
+
+        print(f"Initialized '{self.identifier}'.")
 
     def to_config(self) -> Dict[str, Any]:
         return {
@@ -153,7 +139,12 @@ class BaseSBERTEmbedder(BaseEmbedder, abc.ABC):
 @register_configurable_element
 class SBERTLabelEmbedder(BaseSBERTEmbedder):
     """Label embedder based on SBERT."""
+
+    def _call(self, data: Union[Document, InformationNugget]) -> [InformationNugget]:
+        pass
+
     identifier: str = "SBERTLabelEmbedder"
+    _sbert_model_str: str = "bert-large-nli-mean-tokens"
 
     required_signal_identifiers: Dict[str, List[str]] = {
         "nuggets": [NaturalLanguageLabelSignal.identifier],
@@ -167,15 +158,18 @@ class SBERTLabelEmbedder(BaseSBERTEmbedder):
         "documents": []
     }
 
+    def __init__(self, sbert_resource_identifier: str):
+        super(SBERTLabelEmbedder, self).__init__(sbert_resource_identifier)
+        path: str = os.path.join(os.path.dirname(__file__), "..", "models", "sentence-transformers")
+        self._sbert_model: SentenceTransformer = SentenceTransformer(self._sbert_model_str, cache_folder=path)
+
+
     def _embed_nuggets(
             self,
             nuggets: List[InformationNugget],
-            interaction_callback: BaseInteractionCallback,
-            status_callback: BaseStatusCallback,
-            statistics: Statistics
     ) -> None:
         texts: List[str] = [nugget[NaturalLanguageLabelSignal] for nugget in nuggets]
-        embeddings: List[np.ndarray] = resources.MANAGER[self._sbert_resource_identifier].encode(
+        embeddings: List[np.ndarray] = self._sbert_model.encode(
             texts, show_progress_bar=False
         )
 
@@ -201,6 +195,11 @@ class SBERTLabelEmbedder(BaseSBERTEmbedder):
 @register_configurable_element
 class SBERTTextEmbedder(BaseSBERTEmbedder):
     """Text embedder based on SBERT."""
+    _sbert_model_str: str = "bert-large-nli-mean-tokens"
+
+    def _call(self, data: Union[Document, InformationNugget]) -> [InformationNugget]:
+        pass
+
     identifier: str = "SBERTTextEmbedder"
 
     required_signal_identifiers: Dict[str, List[str]] = {
@@ -215,15 +214,17 @@ class SBERTTextEmbedder(BaseSBERTEmbedder):
         "documents": []
     }
 
+    def __init__(self, sbert_resource_identifier):
+        super(SBERTTextEmbedder, self).__init__(sbert_resource_identifier)
+        path: str = os.path.join(os.path.dirname(__file__), "..", "models", "sentence-transformers")
+        self._sbert_model: SentenceTransformer = SentenceTransformer(self._sbert_model_str, cache_folder=path)
+
     def _embed_nuggets(
             self,
             nuggets: List[InformationNugget],
-            interaction_callback: BaseInteractionCallback,
-            status_callback: BaseStatusCallback,
-            statistics: Statistics
     ) -> None:
         texts: List[str] = [nugget.text for nugget in nuggets]
-        embeddings: List[np.ndarray] = resources.MANAGER[self._sbert_resource_identifier].encode(
+        embeddings: List[np.ndarray] = self._sbert_model.encode(
             texts, show_progress_bar=False
         )
 
@@ -312,7 +313,12 @@ class BERTContextSentenceEmbedder(BaseEmbedder):
     Computes the context embedding of an InformationNugget as the mean of the final hidden states of the tokens that make up
     the nugget in its context sentence.
     """
+
+    def _call(self, data: Union[Document, InformationNugget]) -> [InformationNugget]:
+        pass
+
     identifier: str = "BERTContextSentenceEmbedder"
+    _bert_model_str: str = "bert-large-cased"
 
     required_signal_identifiers: Dict[str, List[str]] = {
         "nuggets": [CachedContextSentenceSignal.identifier],
@@ -334,32 +340,37 @@ class BERTContextSentenceEmbedder(BaseEmbedder):
         """
         super(BERTContextSentenceEmbedder, self).__init__()
         self._bert_resource_identifier: str = bert_resource_identifier
+        path: str = os.path.join(os.path.dirname(__file__), "..", "models", "transformers")
 
-        # preload required resources
-        resources.MANAGER.load(self._bert_resource_identifier)
-        logger.debug(f"Initialized '{self.identifier}'.")
+        self._tokenizer: BertTokenizer = BertTokenizerFast.from_pretrained(self._bert_model_str, cache_dir=path)
+        self._tokenizer.add_tokens(["[START_MENTION]", "[END_MENTION]", "[MASK]"])
+
+        self._model: BertModel = BertModel.from_pretrained(self._bert_model_str, cache_dir=path)
+
+        # Use GPU for BERT model, but only if there is enough GPU RAM available
+        if torch.cuda.is_available() and torch.cuda.get_device_properties(0).total_memory > 4 * 1024 * 1024 * 1024:
+            self._device: Optional[Any] = torch.device("cuda")
+            logger.info(f"Will use GPU for BERT model")
+        else:
+            self._device: Optional[Any] = None
 
     def _embed_nuggets(
             self,
             nuggets: List[InformationNugget],
-            interaction_callback: BaseInteractionCallback,
-            status_callback: BaseStatusCallback,
-            statistics: Statistics
     ) -> None:
 
-        if resources.MANAGER[self._bert_resource_identifier]["device"] is not None:
-            resources.MANAGER[self._bert_resource_identifier]["model"].to(
-                resources.MANAGER[self._bert_resource_identifier]["device"]
+        if self._device is not None:
+            self._model.to(
+                self._device
             )
 
         for nugget_ix, nugget in enumerate(nuggets):
-            self._use_status_callback_for_embedder(status_callback, "nuggets", nugget_ix, len(nuggets))
 
             context_sentence: str = nugget[CachedContextSentenceSignal]["text"]
             start_in_context: int = nugget[CachedContextSentenceSignal]["start_char"]
             end_in_context: int = nugget[CachedContextSentenceSignal]["end_char"]
 
-            device = resources.MANAGER[self._bert_resource_identifier]["device"]
+            device = self._device
 
             def set_arguments(**kwargs):
                 def wrapper(f):
@@ -367,7 +378,7 @@ class BERTContextSentenceEmbedder(BaseEmbedder):
 
                 return wrapper
 
-            @set_arguments(device=device, tokenizer=resources.MANAGER[self._bert_resource_identifier]["tokenizer"])
+            @set_arguments(device=device, tokenizer=self._tokenizer)
             def get_encoding_data_with_limited_tokens_for_context(context_sentence, start_in_context, end_in_context,
                                                                   device=None, tokenizer=None,
                                                                   limit=512):
@@ -410,7 +421,6 @@ class BERTContextSentenceEmbedder(BaseEmbedder):
                         The whole sentence is too long after encoding, so find a shorter one that is roughly centered
                         on the nugget text and contains no more tokens than allowed
                     """
-                    statistics["num_too_many_token_indices"] += 1
                     logger.error(f"There are too many token indices in context sentence '{context_sentence}'!")
 
                     def get_candidate_contexts(context_sentence, start_in_context, end_in_context):
@@ -455,7 +465,7 @@ class BERTContextSentenceEmbedder(BaseEmbedder):
                                                                                                                                            start_in_context,
                                                                                                                                            end_in_context)
 
-            outputs = resources.MANAGER[self._bert_resource_identifier]["model"](
+            outputs = self._model(
                 input_ids=input_ids,
                 token_type_ids=token_type_ids,
                 attention_mask=attention_mask
@@ -474,7 +484,6 @@ class BERTContextSentenceEmbedder(BaseEmbedder):
             token_indices: List[int] = list(token_indices_set)
 
             if token_indices == []:
-                statistics["num_no_token_indices"] += 1
                 logger.error(f"There are no token indices for nugget '{nugget.text}' in '{context_sentence}'!")
                 logger.error("==> Using all-zero embedding vector.")
                 embedding: np.ndarray = np.zeros_like(output[0])
@@ -503,6 +512,10 @@ class RelativePositionEmbedder(BaseEmbedder):
     required signals: start_char and document.text
     produced signals: RelativePositionSignal
     """
+
+    def _call(self, data: Union[Document, InformationNugget]) -> [InformationNugget]:
+        pass
+
     identifier: str = "RelativePositionEmbedder"
 
     required_signal_identifiers: Dict[str, List[str]] = {
@@ -524,15 +537,10 @@ class RelativePositionEmbedder(BaseEmbedder):
     def _embed_nuggets(
             self,
             nuggets: List[InformationNugget],
-            interaction_callback: BaseInteractionCallback,
-            status_callback: BaseStatusCallback,
-            statistics: Statistics
     ) -> None:
         for ix, nugget in enumerate(nuggets):
-            self._use_status_callback_for_embedder(status_callback, "nuggets", ix, len(nuggets))
             if len(nugget.document.text) == 0:
                 nugget[RelativePositionSignal] = RelativePositionSignal(0)
-                statistics["num_text_is_empty"] += 1
             else:
                 relative_position: float = nugget.start_char / len(nugget.document.text)
                 nugget[RelativePositionSignal] = RelativePositionSignal(relative_position)

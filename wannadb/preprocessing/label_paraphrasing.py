@@ -1,5 +1,6 @@
 import abc
 import logging
+import os
 import time
 from typing import Dict, List, Any
 
@@ -46,43 +47,46 @@ class BaseLabelParaphraser(BasePipelineElement, abc.ABC):
             if interval != 0 and ix % interval == 0:
                 status_callback(f"Paraphrasing {element} with {self.identifier}...", ix / total)
 
+    def __call__(
+            self,
+            nugget_holder
+    ) -> None:
+        while True:
+            document = self.input_queue.get()
+            if document is None:
+                if self.next_pipeline_element is not None:
+                    self.next_pipeline_element.input_queue.put(None)
+                break
+            print("{}: DOCUMENT:{} --- PIPELINE_PID:{}".format(self.identifier, document.name, os.getppid()))
+            nuggets: [InformationNugget] = nugget_holder[document.name]
+            self._paraphrase_nugget_labels(nuggets)
+            nugget_holder[document.name] = nuggets  # Overwrite current dir entry
+
+            if self.next_pipeline_element is not None:
+                self.next_pipeline_element.input_queue.put(document)
+
     def _call(
             self,
-            document_base: DocumentBase,
-            interaction_callback: BaseInteractionCallback,
-            status_callback: BaseStatusCallback,
-            statistics: Statistics
+            nugget: InformationNugget
     ) -> None:
+        pass
         # paraphrasing nugget labels
-        nuggets: List[InformationNugget] = document_base.nuggets
-        logger.info(f"Paraphrase {len(nuggets)} nugget labels with {self.identifier}.")
-        tick: float = time.time()
-        status_callback(f"Paraphrasing nugget labels with {self.identifier}...", -1)
-        statistics["nuggets"]["num_nuggets"] = len(nuggets)
-        self._paraphrase_nugget_labels(nuggets, interaction_callback, status_callback, statistics["nuggets"])
-        status_callback(f"Paraphrasing nugget labels with {self.identifier}...", 1)
-        tack: float = time.time()
-        logger.info(f"Paraphrased {len(nuggets)} nugget labels with {self.identifier} in {tack - tick} seconds.")
-        statistics["nuggets"]["runtime"] = tack - tick
 
-        # paraphrasing attribute names
-        attributes: List[Attribute] = document_base.attributes
-        logger.info(f"Paraphrase {len(attributes)} attribute names with {self.identifier}.")
-        tick: float = time.time()
-        status_callback(f"Paraphrasing attribute names with {self.identifier}...", -1)
-        statistics["attributes"]["num_attributes"] = len(nuggets)
-        self._paraphrase_attribute_names(attributes, interaction_callback, status_callback, statistics["attributes"])
-        status_callback(f"Paraphrasing attribute names with {self.identifier}...", 1)
-        tack: float = time.time()
-        logger.info(f"Paraphrased {len(attributes)} attribute names with {self.identifier} in {tack - tick} seconds.")
-        statistics["attributes"]["runtime"] = tack - tick
+        # # paraphrasing attribute names
+        # attributes: List[Attribute] = document_base.attributes
+        # logger.info(f"Paraphrase {len(attributes)} attribute names with {self.identifier}.")
+        # tick: float = time.time()
+        # status_callback(f"Paraphrasing attribute names with {self.identifier}...", -1)
+        # statistics["attributes"]["num_attributes"] = len(nuggets)
+        # self._paraphrase_attribute_names(attributes, interaction_callback, status_callback, statistics["attributes"])
+        # status_callback(f"Paraphrasing attribute names with {self.identifier}...", 1)
+        # tack: float = time.time()
+        # logger.info(f"Paraphrased {len(attributes)} attribute names with {self.identifier} in {tack - tick} seconds.")
+        # statistics["attributes"]["runtime"] = tack - tick
 
     def _paraphrase_nugget_labels(
             self,
             nuggets: List[InformationNugget],
-            interaction_callback: BaseInteractionCallback,
-            status_callback: BaseStatusCallback,
-            statistics: Statistics
     ) -> None:
         """
         Paraphrase nugget labels for the given list of nuggets.
@@ -137,20 +141,13 @@ class OntoNotesLabelParaphraser(BaseLabelParaphraser):
     def __init__(self):
         """Initialize the OntoNotesLabelParaphraser."""
         super(OntoNotesLabelParaphraser, self).__init__()
-        logger.debug(f"Initialized '{self.identifier}'.")
+        print(f"Initialized '{self.identifier}'.")
 
     def _paraphrase_nugget_labels(
             self,
             nuggets: List[InformationNugget],
-            interaction_callback: BaseInteractionCallback,
-            status_callback: BaseStatusCallback,
-            statistics: Statistics
     ) -> None:
-        statistics["num_nuggets"] = len(nuggets)
-        statistics["copied_labels"] = set()
-
         for ix, nugget in enumerate(nuggets):
-            self._use_status_callback_for_label_paraphrasers(status_callback, "nugget labels", ix, len(nuggets))
             label_mappings: Dict[str, str] = {
                 "QUANTITY": "quantity measurement weight distance",
                 "CARDINAL": "cardinal numeral",
@@ -175,11 +172,9 @@ class OntoNotesLabelParaphraser(BaseLabelParaphraser):
             if nugget[LabelSignal] in label_mappings.keys():
                 natural_language_label: str = label_mappings[nugget[LabelSignal]]
                 nugget[NaturalLanguageLabelSignal] = NaturalLanguageLabelSignal(natural_language_label)
-                statistics["num_label_changed"] += 1
             else:
                 nugget[NaturalLanguageLabelSignal] = NaturalLanguageLabelSignal(nugget[LabelSignal])
-                statistics["num_label_copied"] += 1
-                statistics["copied_labels"].add(nugget[LabelSignal])
+
 
     def to_config(self) -> Dict[str, Any]:
         return {

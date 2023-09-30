@@ -1,9 +1,11 @@
 import abc
 import logging
+import multiprocessing
+import os
 import time
-from typing import Any, Dict, List, Type
+from typing import Any, Dict, List, Type, Union
 
-from wannadb.data.data import DocumentBase
+from wannadb.data.data import DocumentBase, Document, InformationNugget
 from wannadb.interaction import BaseInteractionCallback
 from wannadb.statistics import Statistics
 from wannadb.status import BaseStatusCallback
@@ -91,6 +93,13 @@ class BasePipelineElement(BaseConfigurableElement, abc.ABC):
         "documents": []
     }
 
+    def __init__(self):
+        self.input_queue: multiprocessing.Queue = multiprocessing.Queue()
+        self.next_pipeline_element = None
+
+    def set_next_stage(self, next_pipeline_element):
+        self.next_pipeline_element = next_pipeline_element
+
     def _add_required_signal_identifiers(self, required_signal_identifiers: Dict[str, List[str]]) -> None:
         """
         Helper method that adds the dictionary of required signal identifiers to this pipeline element's dictionary of
@@ -104,10 +113,7 @@ class BasePipelineElement(BaseConfigurableElement, abc.ABC):
 
     def __call__(
             self,
-            document_base: DocumentBase,
-            interaction_callback: BaseInteractionCallback,
-            status_callback: BaseStatusCallback,
-            statistics: Statistics
+            nugget_holder
     ) -> None:
         """
         Apply the pipeline element to the document base.
@@ -115,42 +121,31 @@ class BasePipelineElement(BaseConfigurableElement, abc.ABC):
         This method is called by the pipeline and calls the _call method that contains the actual implementation of the
         pipeline element. Furthermore, it ensures that the proper status is communicated before and after the pipeline
         element's execution and tracks the execution time.
-
-        :param document_base: document base to work on
-        :param interaction_callback: callback to allow for user interaction
-        :param status_callback: callback to communicate current status (message and progress)
-        :param statistics: statistics object to collect statistics
         """
-        logger.info(f"Execute {self.identifier}.")
-        tick: float = time.time()
-        status_callback(f"Running {self.identifier}...", -1)
+        while True:
+            document = self.input_queue.get()
+            if document is None:
+                if self.next_pipeline_element is not None:
+                    self.next_pipeline_element.input_queue.put(None)
+                break
 
-        statistics["identifier"] = self.identifier
+            nuggets = self._call(document)
+            nugget_holder[document.name] = nuggets
 
-        self._call(document_base, interaction_callback, status_callback, statistics)
-
-        status_callback(f"Running {self.identifier}...", 1)
-        tack: float = time.time()
-        logger.info(f"Executed {self.identifier} in {tack - tick} seconds.")
-        statistics["runtime"] = tack - tick
+            if self.next_pipeline_element is not None:
+                self.next_pipeline_element.input_queue.put(document)
 
     @abc.abstractmethod
     def _call(
             self,
-            document_base: DocumentBase,
-            interaction_callback: BaseInteractionCallback,
-            status_callback: BaseStatusCallback,
-            statistics: Statistics
-    ) -> None:
+            data: Union[Document, InformationNugget],
+    ) -> [InformationNugget]:
         """
         Apply the pipeline element to the document base.
 
         This method is overwritten by the actual pipeline elements and contains their implementation.
 
         :param document_base: document base to work on
-        :param interaction_callback: callback to allow for user interaction
-        :param status_callback: callback to communicate current status (message and progress)
-        :param statistics: statistics object to collect statistics
         """
         raise NotImplementedError
 
@@ -232,29 +227,40 @@ class Pipeline(BaseConfigurableElement):
     def __call__(
             self,
             document_base: DocumentBase,
-            interaction_callback: BaseInteractionCallback,
-            status_callback: BaseStatusCallback,
-            statistics: Statistics
+            nugget_holder
     ) -> None:
         """
         Apply the pipeline to the document base.
 
         :param document_base: document base to work on
-        :param interaction_callback: callback to allow for user interaction
-        :param status_callback: callback to communicate current status (message and progress)
-        :param statistics: statistics object to collect statistics
         """
-        logger.info("Execute the pipeline.")
-        tick: float = time.time()
-        status_callback("Running the pipeline...", -1)
+        pid = os.getpid()
+        print("STARTED PIPELINE WITH PID: {}".format(pid))
+        num_pipeline_elements: int = len(self._pipeline_elements)
 
-        for ix, pipeline_element in enumerate(self._pipeline_elements):
-            pipeline_element(document_base, interaction_callback, status_callback, statistics[f"pipeline-element-{ix}"])
+        if num_pipeline_elements > 1:
+            for i in range(num_pipeline_elements - 1):
+                self._pipeline_elements[i].set_next_stage(self._pipeline_elements[i + 1])
 
-        status_callback("Running the pipeline...", 1)
-        tack: float = time.time()
-        logger.info(f"Executed the pipeline in {tack - tick} seconds.")
-        statistics["runtime"] = tack - tick
+        # Create processes for each stage
+        processes = [multiprocessing.Process(target=pipeline_element.__call__, args=(nugget_holder, )) for pipeline_element in self._pipeline_elements]
+
+        for doc in document_base.documents:
+           self._pipeline_elements[0].input_queue.put(doc)
+
+        # Signal the end of input to the pipeline
+        self._pipeline_elements[0].input_queue.put(None)
+
+        # Start the processes
+        for process in processes:
+            process.start()
+
+        # Wait for processes to finish
+        for process in processes:
+            process.join()
+
+        for docId, nuggets in dict(nugget_holder).items():
+            print(pid, docId, len(nuggets))
 
     def to_config(self) -> Dict[str, Any]:
         """

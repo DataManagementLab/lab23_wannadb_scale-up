@@ -1,5 +1,6 @@
 import abc
 import logging
+import os
 from typing import Any, Dict, List
 
 from wannadb.configuration import register_configurable_element, BasePipelineElement
@@ -48,26 +49,33 @@ class CopyNormalizer(BaseNormalizer):
     def __init__(self) -> None:
         super(CopyNormalizer, self).__init__()
 
-        logger.debug(f"Initialized '{self.identifier}'.")
+        print(f"Initialized '{self.identifier}'.")
+
+    def __call__(
+            self,
+            nugget_holder
+    ) -> None:
+        while True:
+            document = self.input_queue.get()
+            if document is None:
+                if self.next_pipeline_element is not None:
+                    self.next_pipeline_element.input_queue.put(None)
+                break
+            print("CopyNormalizer: DOCUMENT:{} --- PIPELINE_PID:{}".format(document.name, os.getppid()))
+            nuggets: [InformationNugget] = nugget_holder[document.name]
+            for nugget in nuggets:
+                self._call(nugget)
+            nugget_holder[document.name] = nuggets  # Overwrite current dir entry
+
+            if self.next_pipeline_element is not None:
+                self.next_pipeline_element.input_queue.put(document)
 
     def _call(
             self,
-            document_base: DocumentBase,
-            interaction_callback: BaseInteractionCallback,
-            status_callback: BaseStatusCallback,
-            statistics: Statistics
+            nugget: InformationNugget
     ) -> None:
-        nuggets: List[InformationNugget] = document_base.nuggets  # document_base.nuggets has overhead
-        statistics["num_nuggets"] = len(nuggets)
-
-        for ix, nugget in enumerate(nuggets):
-            self._use_status_callback(status_callback, ix, len(nuggets))
-
-            if ValueSignal.identifier not in nugget.signals.keys():
-                statistics["num_value_set"] += 1
-                nugget[ValueSignal] = ValueSignal(nugget.text)
-            else:
-                statistics["num_value_already_exists"] += 1
+        if ValueSignal.identifier not in nugget.signals.keys():
+            nugget[ValueSignal] = ValueSignal(nugget.text)
 
     def to_config(self) -> Dict[str, Any]:
         return {
