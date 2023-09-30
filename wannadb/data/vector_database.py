@@ -400,7 +400,7 @@ class vectordb:
             collection.load()
             
 
-def generate_and_store_embedding(input_path = None):
+def generate_and_store_embedding(input_path = None, store_in_vdb = True):
     
     with vectordb() as vb:
         collections = utility.list_collections()
@@ -464,9 +464,9 @@ def generate_and_store_embedding(input_path = None):
             
         # with open(BSON_FILE_NAME, "wb") as file:
         #     file.write(document_base.to_bson())
-
-        with vectordb() as vb:
-            vb.extract_nuggets(document_base)
+        if store_in_vdb:
+            with vectordb() as vb:
+                vb.extract_nuggets(document_base)
             
         return document_base
 

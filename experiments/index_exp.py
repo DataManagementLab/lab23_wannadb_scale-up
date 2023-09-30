@@ -163,7 +163,7 @@ def sheet_from_file():
         
         
 def test_indicies_2(as_json=True):
-    cached_document_base = generate_and_store_embedding(PATH)
+    cached_document_base = generate_and_store_embedding(store_in_vdb=False)
 
     for index_type in indicies_to_test:
         
