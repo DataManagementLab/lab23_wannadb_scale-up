@@ -35,7 +35,7 @@ def split_list(lst: [Any], n: int):
 
     return sublists
 
-input_path = "C:\\Users\\waq_5\\Documents\\GitHub\\lab23_wannadb_scale-up_main\\data\\corona\\raw-documents"
+input_path = "./data/corona/raw-documents"
 attributes = ["test, attribute"]
 
 def startWannaDb():
