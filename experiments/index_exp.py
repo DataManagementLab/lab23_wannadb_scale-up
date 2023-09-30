@@ -67,11 +67,18 @@ def test_indicies(as_json=True, with_path=True):
         except Exception as e:
             print(e)
             print(index_type)
-            
+    
+    time_without, distances_without = compute_embedding_distances_withoutVDB(cached_document_base)
+    results["baseline"] = {"init": {"search_time":time_without, "update_base_time":0, "duration":time_without},
+                                   "update":{"search_time":time_without, "update_base_time":0, "duration":time_without}}
+    
+    
     if as_json:
             
         with open('indexupdate_tests.json', 'w') as fp:
             json.dump(results, fp)
+        
+        generate_pdf('indexupdate_tests.json')
     
     else:  
         generate_sheet_from_json(results)
@@ -156,7 +163,7 @@ def sheet_from_file():
         
         
 def test_indicies_2(as_json=True):
-    cached_document_base = generate_and_store_embedding(PATH)
+    cached_document_base = generate_and_store_embedding(store_in_vdb=False)
 
     for index_type in indicies_to_test:
         

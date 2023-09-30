@@ -495,7 +495,7 @@ class vectordb:
 #Helper functions for vector database testing and benchmarking
 ########################################################################################################################################
 
-def generate_and_store_embedding(input_path = None):
+def generate_and_store_embedding(input_path = None, store_in_vdb = True):
     
     with vectordb() as vb:
         collections = utility.list_collections()
@@ -559,9 +559,9 @@ def generate_and_store_embedding(input_path = None):
             
         # with open(BSON_FILE_NAME, "wb") as file:
         #     file.write(document_base.to_bson())
-
-        with vectordb() as vb:
-            vb.extract_nuggets(document_base)
+        if store_in_vdb:
+            with vectordb() as vb:
+                vb.extract_nuggets(document_base)
             
         return document_base
 
@@ -727,9 +727,7 @@ def compute_embedding_distances(document_base, rounds= 1, nprobe_max= 1024, max_
         embedding_collection.release()
 
     print("VDB:--- %s seconds ---" % (time.time() - start_time))
-    distance_mat = compute_distances(document_base.nuggets, document_base.attributes)
     print(f"Processed distances VDB: {amount_distances}")
-    print(f"Processed distances without VDB: {distance_mat.size}")
     return output
 
 

@@ -6,7 +6,8 @@ from experiments.index_exp import generate_pdf, sheet_from_file, test_indicies, 
 
 
 test_indicies(with_path=False)
-generate_pdf()
+print("starting experiment 2")
+test_indicies_2(False)
 # print("finished index tests")
 # print("starting experiment 2")
 #run_experiment_wiki()
