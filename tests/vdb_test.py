@@ -179,7 +179,7 @@ def test_document_base_extraction() -> DocumentBase:
     return document_base
 
 def test_vdb_nugget_extraction(document_base):
-    #load_test_vdb(document_base=document_base,full_embeddings=True)
+    load_test_vdb(document_base=document_base,full_embeddings=True)
 
     with vectordb() as vb:
 
@@ -213,6 +213,7 @@ def test_vdb_nugget_extraction(document_base):
         assert collection.num_entities == len(document_base.nuggets)
 
         collection.release()
+    print("True")
 
 
 def test_vector_search(document_base):
@@ -241,6 +242,7 @@ def test_vector_search(document_base):
             current_document = document_base.documents[i.entity.get('document_id')]
             current_nugget = i.entity.get('id')
             assert 1-i.distance == current_document.nuggets[current_nugget][CachedDistanceSignal]
+    print("True")
              
 
 
