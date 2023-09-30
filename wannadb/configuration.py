@@ -130,7 +130,9 @@ class BasePipelineElement(BaseConfigurableElement, abc.ABC):
                 break
 
             nuggets = self._call(document)
-            nugget_holder[document.name] = nuggets
+            current_nuggets = nugget_holder.get(document.name, [])
+            current_nuggets += nuggets
+            nugget_holder[document.name] = current_nuggets
 
             if self.next_pipeline_element is not None:
                 self.next_pipeline_element.input_queue.put(document)
