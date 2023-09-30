@@ -2,9 +2,7 @@
 
 ![Document collection and corresponding table.](header_image.svg)
 
-WannaDB allows users to explore unstructured text collections by automatically organizing the relevant information nuggets in a table. It supports ad-hoc SQL queries over text collections using a novel two-phased approach: First, a superset of information nuggets is extracted from the texts using existing extractors such as named entity recognizers. The extractions are then interactively matched to a structured table definition as requested by the user.
-
-Watch our [demo video](https://link.tuda.systems/aset-video) or [read our paper](https://doi.org/10.18420/BTW2023-08) to learn more about the usage and underlying concepts.
+WannaDB allows users to explore unstructured text collections by automatically organizing the relevant information nuggets in a table. It supports ad-hoc SQL queries over text collections using a novel two-phased approach. First, a superset of information nuggets is extracted from the texts using existing extractors such as named entity recognizers. The extractions are then interactively matched to a structured table definition as requested by the user.
 
 ## Usage
 
@@ -175,3 +173,23 @@ The `Statistics` object allows you to easily record information during runtime. 
 ### Architecture: GUI
 
 The GUI implementation can be found in the `wannadb_ui` package. `wannadb_api.py` provides an asynchronous API for the `wannadb` library using PyQt's slots and signals mechanism. `main_window.py`, `document_base.py`, and `interactive_window.py` contain different parts of the user interface, and `common.py` contains base classes for some recurring user interface elements.
+
+
+### Reproducing Multithreading Cluster-Experiments:
+
+Two new files have been added to benchmark the preprocessing step: `test_baseline.py` in the main branch and 
+`test_multiprocessing.py` in the multiprocessing branch.
+
+In its current implementation, the multiprocessing assumes that all the models have been downloaded, therefore you need 
+to first start on main branch and launch `test_baseline.py` with following steps:
+
+1. Set-up and actiavte a Python venv:
+   1. `python3.9 -m venv <path_to_venv>`
+   2. `source <path_to_venv>/bin/activate`
+2. Comment the three `pyqt6` dependencies in requirements.txt
+3. `pyton3.9 -m pip install -r requirements.txt`
+4. Edit the `input_path` variable in the `test_baseline.py` file to point to the location of your raw documents (e.g ./data/corona/raw-documents)
+5. `python3.9 ./test_baseline.py`
+
+To start the multiprocessing, first checkout to the `abagabe-multiprocessing` branch and apply the 4th and 5th
+steps above to the `test_multiprocessing.py` file instead of `test_baseline.py`  
