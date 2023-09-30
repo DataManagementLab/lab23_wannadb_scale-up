@@ -17,6 +17,7 @@ from wannadb.statistics import Statistics
 from wannadb.data.signals import LabelEmbeddingSignal, TextEmbeddingSignal, ContextSentenceEmbeddingSignal, RelativePositionSignal,UserProvidedExamplesSignal, \
     CachedDistanceSignal, CurrentMatchIndexSignal, CombinedEmbeddingSignal, POSTagsSignal, AdjustedCombinedSignal
 from sklearn.metrics.pairwise import cosine_distances
+import datasets.skyscraper.skyscraper as dataset
 
 
 from wannadb.configuration import Pipeline
@@ -399,7 +400,7 @@ class vectordb:
             collection.load()
             
 
-def generate_and_store_embedding(input_path):
+def generate_and_store_embedding(input_path = None):
     
     with vectordb() as vb:
         collections = utility.list_collections()
@@ -409,16 +410,23 @@ def generate_and_store_embedding(input_path):
     
     with ResourceManager():
         documents = []
-        for filename in os.listdir(input_path):
-            with open(os.path.join(input_path, filename), "r", encoding='utf-8') as infile:
-                text = infile.read()
-                documents.append(Document(filename.split(".")[0], text))
+        if input_path is not None:
+            for filename in os.listdir(input_path):
+                with open(os.path.join(input_path, filename), "r", encoding='utf-8') as infile:
+                    text = infile.read()
+                    documents.append(Document(filename.split(".")[0], text))
 
-        logger.info(f"Loaded {len(documents)} documents")
-        death_attribute = Attribute("deaths")
-        date_attribute = Attribute("date")
-        document_base = DocumentBase(documents, [death_attribute,date_attribute])
-        
+            logger.info(f"Loaded {len(documents)} documents")
+            death_attribute = Attribute("deaths")
+            date_attribute = Attribute("date")
+            document_base = DocumentBase(documents, [death_attribute,date_attribute])
+        else:
+            documents = dataset.load_dataset()
+            user_attribute_names = dataset.ATTRIBUTES
+            document_base = DocumentBase(
+                documents=[Document(doc["id"], doc["text"]) for doc in documents],
+                attributes=[Attribute(attribute_name) for attribute_name in user_attribute_names]
+            )
         # preprocess the data
         default_pipeline = Pipeline([
                 StanzaNERExtractor(),
