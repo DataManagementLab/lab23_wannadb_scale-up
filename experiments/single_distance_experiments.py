@@ -455,13 +455,13 @@ def run_experiment6(document_base: DocumentBase, index_types: List[str] = ["FLAT
 def run_single_distance():
 
     document_base= get_documentbase('covid-19')
-    load_test_vdb(document_base)
-    run_experiment1(document_base=document_base)
-    run_experiment2(document_base=document_base)
+    # load_test_vdb(document_base)
+    # run_experiment1(document_base=document_base)
+    # run_experiment2(document_base=document_base)
     load_test_vdb(document_base=document_base, full_embeddings=True)
-    run_experiment3(document_base=document_base)
-    run_experiment4(document_base=document_base)
-    run_experiment5(document_base=document_base)
+    # run_experiment3(document_base=document_base)
+    # run_experiment4(document_base=document_base)
+    # run_experiment5(document_base=document_base)
     run_experiment6(document_base=document_base)
 
 
