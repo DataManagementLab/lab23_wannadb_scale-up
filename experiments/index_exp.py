@@ -28,7 +28,7 @@ def test_indicies(as_json=True, with_path=True):
     if with_path:
         cached_document_base = generate_and_store_embedding(PATH,store_in_vdb=False)
     else:
-        cached_document_base = generate_and_store_embedding(store_in_vdb=False)
+        cached_document_base = generate_and_store_embedding(store_in_vdb=True)
     
     embedding_list = []
     attribute = cached_document_base.attributes[0]
