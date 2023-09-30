@@ -4,7 +4,7 @@ from typing import Dict, List, Any
 from wannadb.configuration import BasePipelineElement, register_configurable_element
 from wannadb.data.data import DocumentBase, InformationNugget
 from wannadb.data.signals import CachedContextSentenceSignal, \
-    SentenceStartCharsSignal, CombinedEmbeddingSignal, AdjustedCombinedSignal
+    SentenceStartCharsSignal, CombinedEmbeddingSignal
 from wannadb.interaction import BaseInteractionCallback
 from wannadb.statistics import Statistics
 from wannadb.status import BaseStatusCallback
@@ -121,7 +121,6 @@ class CombineEmbedder(BasePipelineElement):
                 combined_embedding =np.concatenate(embedding_list)
                 nugget[CombinedEmbeddingSignal] = CombinedEmbeddingSignal(combined_embedding)
                 logger.info(f"Combined embedding: {nugget[CombinedEmbeddingSignal]} created!")
-                #print(len(nugget[CombinedEmbeddingSignal]))
 
     
     def to_config(self) -> Dict[str, Any]:

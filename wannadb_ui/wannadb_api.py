@@ -140,10 +140,12 @@ class WannaDBAPI(QObject):
 
             preprocessing_phase(document_base, EmptyInteractionCallback(), status_callback, statistics)
 
+            '''
             # load vector database
             self.status.emit("Loading vector database...", -1)
             with vectordb() as vdb:
                 vdb.extract_nuggets(document_base)
+            '''
 
             self.document_base_to_ui.emit(document_base)
             self.statistics_to_ui.emit(statistics)
@@ -174,8 +176,11 @@ class WannaDBAPI(QObject):
                 self.cache_db.create_input_docs_table(INPUT_DOCS_COLUMN_NAME, document_base.documents)
 
                 self.status.emit("Loading vector database!",-1)
+
+                '''
                 with vectordb() as vdb:
                     vdb.extract_nuggets(document_base)
+                '''
 
                 self.document_base_to_ui.emit(document_base)
                 self.finished.emit("Finished!")
@@ -375,7 +380,44 @@ class WannaDBAPI(QObject):
                             start += len(nug_text)
                 return new_nuggets
             
-
+            matching_phase = Pipeline(
+                [
+                    SplitAttributeNameLabelParaphraser(do_lowercase=True, splitters=[" ", "_"]),
+                    ContextSentenceCacher(),
+                    SBERTLabelEmbedder("SBERTBertLargeNliMeanTokensResource"),
+                    RankingBasedMatcher(
+                        distance=SignalsMeanDistance(
+                            signal_identifiers=[
+                                "LabelEmbeddingSignal",
+                                "TextEmbeddingSignal",
+                                "ContextSentenceEmbeddingSignal",
+                                "RelativePositionSignal"
+                            ]
+                        ),
+                        max_num_feedback=100,
+                        len_ranked_list=10,
+                        max_distance=0.2,
+                        num_random_docs=1,
+                        sampling_mode="AT_MAX_DISTANCE_THRESHOLD",
+                        adjust_threshold=True,
+                        nugget_pipeline=Pipeline(
+                            [
+                                ContextSentenceCacher(),
+                                CopyNormalizer(),
+                                OntoNotesLabelParaphraser(),
+                                SplitAttributeNameLabelParaphraser(do_lowercase=True, splitters=[" ", "_"]),
+                                SBERTLabelEmbedder("SBERTBertLargeNliMeanTokensResource"),
+                                SBERTTextEmbedder("SBERTBertLargeNliMeanTokensResource"),
+                                BERTContextSentenceEmbedder("BertLargeCasedResource"),
+                                RelativePositionEmbedder()
+                            ]
+                        ),
+                        find_additional_nuggets=find_additional_nuggets
+                    )
+                ]
+            )
+            
+            '''
             matching_phase = Pipeline(
                 [
                     ContextSentenceCacher(),
@@ -405,6 +447,7 @@ class WannaDBAPI(QObject):
                     )
                 ]
             )
+            '''
 
             # run matching phase
             def status_callback_fn(message, progress):

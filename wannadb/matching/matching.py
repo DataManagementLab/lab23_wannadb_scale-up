@@ -9,7 +9,7 @@ import numpy as np
 from wannadb.configuration import BasePipelineElement, register_configurable_element, Pipeline
 from wannadb.data.data import Document, DocumentBase, InformationNugget
 from wannadb.data.signals import CachedContextSentenceSignal, CachedDistanceSignal, \
-    SentenceStartCharsSignal, CurrentMatchIndexSignal, LabelSignal, LabelEmbeddingSignal, TextEmbeddingSignal, ContextSentenceEmbeddingSignal, CombinedEmbeddingSignal
+    SentenceStartCharsSignal, CurrentMatchIndexSignal, LabelSignal, CombinedEmbeddingSignal
 from wannadb.interaction import BaseInteractionCallback
 from wannadb.matching.distance import BaseDistance
 from wannadb.statistics import Statistics
@@ -576,7 +576,7 @@ class RankingBasedMatcherVDB(BaseMatcher):
                 logger.info(f"Combined embedding: {combined_embedding}")
 
 
-            remaining_documents = self._vector_database.compute_inital_distances(attribute_embedding= combined_embedding, document_base=document_base)
+            remaining_documents = self._vector_database.compute_initial_distances(attribute_embedding= combined_embedding, document_base=document_base)
             logger.info(f"Length remaining: {len(remaining_documents)}")
 
             tak: float = time.time()
