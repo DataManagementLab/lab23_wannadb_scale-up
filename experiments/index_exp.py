@@ -55,7 +55,7 @@ def test_indicies(as_json=True, with_path=True):
                 collection = Collection(EMBEDDING_COL_NAME)
                 collection.load()
                 start = time.time()
-                _, search_time_init, update_base_time_init = vdb.compute_inital_distances(combined_embedding, document_base, True)
+                _, search_time_init, update_base_time_init = vdb.compute_initial_distances(combined_embedding, document_base, True)
                 duration_imit = time.time() - start
                 search_time_update, update_base_time_update = vdb.updating_distances_documents(combined_embedding, document_base.documents, document_base, True)
                 duration_iupdate = time.time() - start - duration_imit
