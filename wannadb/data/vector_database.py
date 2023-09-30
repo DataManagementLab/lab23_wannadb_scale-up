@@ -623,9 +623,7 @@ def compute_embedding_distances(document_base, rounds= 1, nprobe_max= 1024, max_
         embedding_collection.release()
 
     print("VDB:--- %s seconds ---" % (time.time() - start_time))
-    distance_mat = compute_distances(document_base.nuggets, document_base.attributes)
     print(f"Processed distances VDB: {amount_distances}")
-    print(f"Processed distances without VDB: {distance_mat.size}")
     return output
 
 
