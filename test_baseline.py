@@ -14,7 +14,7 @@ from wannadb.resources import ResourceManager
 from wannadb.statistics import Statistics
 from wannadb.status import EmptyStatusCallback
 
-input_path = "C:\\Users\\waq_5\\Documents\\GitHub\\lab23_wannadb_scale-up_main\\data\\corona\\raw-documents"
+input_path = "/data/corona/raw-documents"
 
 def start():
     with ResourceManager():
