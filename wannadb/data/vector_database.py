@@ -108,14 +108,18 @@ class vectordb:
         logger.info("Disconnecting from vector database")
         connections.disconnect(alias='default')
     
-    def setup_vdb(self, documentBase: DocumentBase, model: str = None) -> None:
+    def setup_vdb(self, documentBase: DocumentBase) -> None:
 
-        # Liste alle vorhandenen Kollektionen (Vektordatenbanken) auf
         collections = utility.list_collections()
 
         for collection in collections:
             Collection(collection).drop()
             logger.info(f'Collection {collection} has been deleted.')
+
+            try:
+                collection.drop_index()
+            except:
+                pass
 
         self._embedding_value = FieldSchema( 
             name="embedding_value",
@@ -139,11 +143,11 @@ class vectordb:
         collection = Collection(EMBEDDING_COL_NAME)
 
 
-    def extract_nuggets(self, documentBase: DocumentBase, model : str = None) -> None:
+    def extract_nuggets(self, documentBase: DocumentBase) -> None:
         """
         Extract nugget data from document base
         """
-        self.setup_vdb(documentBase,model)
+        self.setup_vdb(documentBase)
 
         collection = Collection(EMBEDDING_COL_NAME)
 
@@ -164,7 +168,7 @@ class vectordb:
                         ]
                     collection.insert(data)
 
-                    logger.info(f"Inserted nugget {id} {combined_embedding} from document {document.name} into full_collection")
+                    logger.info(f"Inserted nugget {id} {combined_embedding} from document {document.name} into collection")
                     dbid_counter = dbid_counter+1
 
                 collection.flush()
@@ -182,7 +186,7 @@ class vectordb:
         logger.info("Embedding insertion finished")
 
 
-    def compute_inital_distances(self, attribute_embedding : List[float], document_base: DocumentBase, return_times:bool = False) -> List[Document]:
+    def compute_initial_distances(self, attribute_embedding : List[float], document_base: DocumentBase, return_times:bool = False) -> List[Document]:
         attribute_embedding = normalize(attribute_embedding.reshape(1,-1),norm='l2')
         n_docs = len(document_base.documents)
         remaining_documents: List[Document] = []
@@ -192,7 +196,7 @@ class vectordb:
         search_limit = n_docs*20
         start_time = time.time()
         if search_limit < 16384:
- 
+            
             results = collection.search(
                 data=attribute_embedding, 
                 anns_field="embedding_value", 
@@ -203,6 +207,8 @@ class vectordb:
                 consistency_level="Strong"
             )
             search_time = time.time() - start_time
+
+            start_time = time.time()
             for i in results[0]: 
                 if len(remaining_documents) < n_docs:  
                     current_document = document_base.documents[i.entity.get('document_id')]
@@ -216,6 +222,7 @@ class vectordb:
                         continue
                 else:
                     break
+            update_time = time.time() - start_time
 
         else:
             results=[]
@@ -243,6 +250,7 @@ class vectordb:
 
             search_time = time.time() - start_time
             
+            start_time = time.time()
             flag = False
             for search_hit in results:
                 for i in search_hit:
@@ -261,10 +269,10 @@ class vectordb:
                         break
                 if flag:
                     break
+            update_time = time.time() - start_time
         
-        update_base_time = time.time() - start_time - search_time
         if return_times:
-            return remaining_documents, search_time, update_base_time
+            return remaining_documents, search_time, update_time
         else:
             return remaining_documents
 
@@ -366,8 +374,9 @@ class vectordb:
         if return_times:
             return search_time, update_base_time
 
-    def regenerate_index(self, index_name, collection_name = EMBEDDING_COL_NAME):
+    def regenerate_index(self, index_name, collection_name = EMBEDDING_COL_NAME, metric_type: str = 'COSINE'):
         self._index_params["index_type"] = index_name
+        self._index_params["metric_type"] = metric_type
         collection = Collection(collection_name)
         nlist = 4 * int(np.sqrt(collection.num_entities))
         self._index_params["params"]["nlist"] = nlist

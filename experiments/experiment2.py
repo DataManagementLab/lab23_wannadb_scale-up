@@ -39,7 +39,6 @@ from experiments.automatic_feedback import AutomaticRandomRankingBasedMatchingFe
 from experiments.baselines.baseline_bart_seq2seq import calculate_f1_scores
 from experiments.util import consider_overlap_as_match
 from wannadb.data.vector_database import EMBEDDING_COL_NAME, vectordb
-from wannadb.data.signals import UserProvidedExamplesSignal, LabelEmbeddingSignal, TextEmbeddingSignal, ContextSentenceEmbeddingSignal
 import cProfile, pstats, io
 from pstats import SortKey
 
@@ -156,13 +155,13 @@ def run_experiment_2(index_types: List[str] = ["FLAT","IVF_FLAT","IVF_SQ8","GPU_
         ################################################################################################################
         # Load embeddings into vector database
         ################################################################################################################
+        print(len(cached_document_base.documents))
         print("Start writing in VDB")
         start_time = time.time()
         with vectordb() as vdb:
             vdb.extract_nuggets(cached_document_base)
         extracting_nugget_time = time.time() - start_time
         print("Finished writing in VDB:--- %s seconds ---" % (extracting_nugget_time))
-        
 
         for index_type in index_types:
             
@@ -477,4 +476,6 @@ def run_experiment_2(index_types: List[str] = ["FLAT","IVF_FLAT","IVF_SQ8","GPU_
             plt.savefig(path[:-5] + f"-durations-{index_type}.pdf", format="pdf", transparent=True)
         except:
             print("No durations plot")
-        print("Extracting nuggets to VDB:--- %s seconds ---" % (extracting_nugget_time))
+        #print("Extracting nuggets to VDB:--- %s seconds ---" % (extracting_nugget_time))
+
+run_experiment_2()
