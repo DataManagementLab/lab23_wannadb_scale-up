@@ -1,5 +1,6 @@
 import logging.config
 import os
+import timeit
 
 from wannadb.configuration import BasePipelineElement, Pipeline
 from wannadb.data.data import Document, DocumentBase
@@ -15,6 +16,11 @@ from wannadb.statistics import Statistics
 from wannadb.status import EmptyStatusCallback
 
 input_path = "/data/corona/raw-documents"
+
+
+def write_results(res: str):
+    with open("results.txt", "a") as file:
+        file.write(res)
 
 def start():
     with ResourceManager():
@@ -46,13 +52,16 @@ def start():
 
         statistics = Statistics(do_collect=True)
         statistics["preprocessing"]["config"] = wannadb_pipeline.to_config()
-
+        start = timeit.default_timer()
         wannadb_pipeline(
             document_base=document_base,
             interaction_callback=EmptyInteractionCallback(),
             status_callback=EmptyStatusCallback(),
             statistics=statistics["preprocessing"]
         )
+        stop = timeit.default_timer()
+
+        output = "Baseline: {}".format((stop - start))
 
 if __name__ == "__main__":
     start()

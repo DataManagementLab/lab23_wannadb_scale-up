@@ -189,7 +189,8 @@ to first start on main branch and launch `test_baseline.py` with following steps
 2. Comment the three `pyqt6` dependencies in requirements.txt
 3. `pyton3.9 -m pip install -r requirements.txt`
 4. Edit the `input_path` variable in the `test_baseline.py` file to point to the location of your raw documents (e.g ./data/corona/raw-documents)
-5. `python3.9 ./test_baseline.py`
+5. `touch results.txt`
+6. `python3.9 ./test_baseline.py`
 
 To start the multiprocessing, first checkout to the `abagabe-multiprocessing` branch and apply the 4th and 5th
 steps above to the `test_multiprocessing.py` file instead of `test_baseline.py`  
