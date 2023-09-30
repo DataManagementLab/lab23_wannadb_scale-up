@@ -1,3 +1,4 @@
+""" this module tests the performance of the system on the corona dataset. It tests several index types and compares them."""
 import copy
 import json
 import logging.config
@@ -33,7 +34,7 @@ from wannadb.preprocessing.other_processing import ContextSentenceCacher, Combin
 from wannadb.resources import ResourceManager
 from wannadb.statistics import Statistics
 from wannadb.status import EmptyStatusCallback
-import datasets.skyscraper.skyscraper as dataset
+import datasets.corona.corona as dataset
 from experiments.automatic_feedback import AutomaticRandomRankingBasedMatchingFeedback
 from experiments.baselines.baseline_bart_seq2seq import calculate_f1_scores
 from experiments.util import consider_overlap_as_match
@@ -155,12 +156,12 @@ def run_experiment_2(index_types: List[str] = ["FLAT","IVF_FLAT","IVF_SQ8","GPU_
         ################################################################################################################
         # Load embeddings into vector database
         ################################################################################################################
-        # print("Start writing in VDB")
-        # start_time = time.time()
-        # with vectordb() as vdb:
-        #     vdb.extract_nuggets(cached_document_base)
-        # extracting_nugget_time = time.time() - start_time
-        # print("Finished writing in VDB:--- %s seconds ---" % (extracting_nugget_time))
+        print("Start writing in VDB")
+        start_time = time.time()
+        with vectordb() as vdb:
+            vdb.extract_nuggets(cached_document_base)
+        extracting_nugget_time = time.time() - start_time
+        print("Finished writing in VDB:--- %s seconds ---" % (extracting_nugget_time))
         
 
         for index_type in index_types:
