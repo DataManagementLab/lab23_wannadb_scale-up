@@ -1,233 +1,250 @@
 from typing import List
-
 import pytest
-from experiments.distance_experiments import new_compute_embedding_distances
+
 
 from wannadb.data.data import Attribute, Document, DocumentBase, InformationNugget
 from wannadb.data.data import Document, DocumentBase
 import random
-from wannadb.data.vector_database import EMBEDDING_COL_NAME, compute_embedding_distances, compute_embedding_distances_withoutVDB, generate_and_store_embedding, vectordb, VECTORDB
+from wannadb.data.vector_database import EMBEDDING_COL_NAME, compute_embedding_distances, compute_embedding_distances_withoutVDB, generate_and_store_embedding, vectordb
 from pymilvus import Collection, utility
 import re
-
 import xlsxwriter
+from wannadb.resources import ResourceManager
+from wannadb.data.data import Attribute, Document, DocumentBase, InformationNugget
+from wannadb.data.vector_database import vectordb
+from pymilvus import (
+    connections,
+    utility,
+    FieldSchema,
+    CollectionSchema,
+    DataType,
+    Collection,
+)
+from typing import List, Any, Tuple
+import time
+import numpy as np
+from wannadb.statistics import Statistics
+from scipy.spatial.distance import cosine
+from sklearn.metrics.pairwise import cosine_distances
+import pandas as pd
+from wannadb.data.signals import NaturalLanguageLabelSignal, LabelSignal, CachedContextSentenceSignal, LabelEmbeddingSignal, CombinedEmbeddingSignal, CachedDistanceSignal
+import copy
+import os
+import numpy as np
+from experiments.util import compute_distances_and_store, load_test_vdb
 
-@pytest.fixture
-def documents() -> List[Document]:
-    return [
-        Document(
-            "document-0",
-            "Wilhelm Conrad Röntgen (/ˈrɛntɡən, -dʒən, ˈrʌnt-/; [ˈvɪlhɛlm ˈʁœntɡən]; 27 March 1845 – 10 "
-            "February 1923) was a German physicist, who, on 8 November 1895, produced and detected "
-            "electromagnetic radiation in a wavelength range known as X-rays or Röntgen rays, an achievement "
-            "that earned him the first Nobel Prize in Physics in 1901. In honour of his accomplishments, in "
-            "2004 the International Union of Pure and Applied Chemistry (IUPAC) named element 111, "
-            "roentgenium, a radioactive element with multiple unstable isotopes, after him."
-        ),
-        Document(
-            "document-1",
-            "Wilhelm Carl Werner Otto Fritz Franz Wien ([ˈviːn]; 13 January 1864 – 30 August 1928) was a "
-            "German physicist who, in 1893, used theories about heat and electromagnetism to deduce Wien's "
-            "displacement law, which calculates the emission of a blackbody at any temperature from the "
-            "emission at any one reference temperature. He also formulated an expression for the black-body "
-            "radiation which is correct in the photon-gas limit. His arguments were based on the notion of "
-            "adiabatic invariance, and were instrumental for the formulation of quantum mechanics. Wien "
-            "received the 1911 Nobel Prize for his work on heat radiation. He was a cousin of Max Wien, "
-            "inventor of the Wien bridge."
-        )
-    ]
+from pymilvus import (
+    utility,
+    FieldSchema,
+    CollectionSchema,
+    DataType,
+    Collection,
+)
 
-def create_random_float_vector_dimension_1024() -> List[float]:
-    return [random.random() for _ in range(1024)]
+from wannadb.configuration import Pipeline
+from wannadb.data.data import Attribute, Document, DocumentBase
+from wannadb.interaction import EmptyInteractionCallback
+from wannadb.preprocessing.embedding import BERTContextSentenceEmbedder,  \
+     SBERTTextEmbedder, SBERTLabelEmbedder
+from wannadb.preprocessing.extraction import StanzaNERExtractor, SpacyNERExtractor
+from wannadb.preprocessing.label_paraphrasing import OntoNotesLabelParaphraser, SplitAttributeNameLabelParaphraser
+from wannadb.preprocessing.normalization import CopyNormalizer
+from wannadb.preprocessing.other_processing import ContextSentenceCacher, CombineEmbedder
+from wannadb.resources import ResourceManager
+from wannadb.statistics import Statistics
+from wannadb.status import EmptyStatusCallback
+import datasets.corona.corona as corona
+import datasets.skyscraper.skyscraper as skyscraper
+import datasets.wikipedia.wikipedia as wikipedia
+from wannadb.data.vector_database import EMBEDDING_COL_NAME, vectordb
+from pymilvus.exceptions import SchemaNotReadyException
+from wannadb.matching.distance import SignalsMeanDistance
+import time 
+from typing import List
 
 
-@ pytest.fixture
-def attributes() -> List[Attribute]:
-    name_attr = Attribute('name')
-    name_attr.__setitem__(key='LabelEmbeddingSignal', value=create_random_float_vector_dimension_1024())
-    month_attr = Attribute('month')
-    month_attr.__setitem__(key='LabelEmbeddingSignal', value=create_random_float_vector_dimension_1024())
-    year_attr = Attribute('year')
-    year_attr.__setitem__(key='LabelEmbeddingSignal', value=create_random_float_vector_dimension_1024())
-    return [
-        name_attr,
-        month_attr,
-        year_attr
-    ]
+from wannadb.configuration import Pipeline
+from wannadb.data.data import Document, DocumentBase
+from wannadb.interaction import EmptyInteractionCallback
+from wannadb.preprocessing.embedding import SBERTTextEmbedder, SBERTLabelEmbedder, BERTContextSentenceEmbedder
+from wannadb.preprocessing.extraction import StanzaNERExtractor, SpacyNERExtractor
+from wannadb.preprocessing.label_paraphrasing import OntoNotesLabelParaphraser, SplitAttributeNameLabelParaphraser
+from wannadb.preprocessing.normalization import CopyNormalizer
+from wannadb.preprocessing.other_processing import ContextSentenceCacher, CombineEmbedder
+from wannadb.resources import ResourceManager
+from wannadb.statistics import Statistics
+from wannadb.status import EmptyStatusCallback
+from wannadb.matching.distance import SignalsMeanDistance
+import datasets.corona.corona as dataset
+import os
+from sklearn.preprocessing import normalize
 
-@pytest.fixture
-def information_nuggets(documents) -> List[InformationNugget]:
-    nugget_one = InformationNugget(documents[0], 0, 22)
-    nugget_one.__setitem__(key='LabelEmbeddingSignal', value=create_random_float_vector_dimension_1024())
-    nugget_one.__setitem__(key='LabelSignal', value='test1')
-    nugget_two = InformationNugget(documents[0], 56, 123)
-    nugget_two.__setitem__(key='LabelEmbeddingSignal', value=create_random_float_vector_dimension_1024())
-    nugget_two.__setitem__(key='LabelSignal', value='test2')
-    nugget_three = InformationNugget(documents[1], 165, 176)
-    nugget_three.__setitem__(key='LabelEmbeddingSignal', value=create_random_float_vector_dimension_1024())
-    nugget_three.__setitem__(key='LabelSignal', value='test3')
-    nugget_four = InformationNugget(documents[1], 234, 246)
-    nugget_four.__setitem__(key='LabelEmbeddingSignal', value=create_random_float_vector_dimension_1024())
-    nugget_four.__setitem__(key='LabelSignal', value='test4')
-    return [
-        nugget_one,
-        nugget_two,
-        nugget_three,
-        nugget_four,    
-    ]
+#import datasets.corona.corona as dataset
+from wannadb.data.signals import CachedDistanceSignal
+from wannadb.data.signals import CurrentMatchIndexSignal, CombinedEmbeddingSignal,  LabelEmbeddingSignal
+import cProfile, pstats, io
+from pstats import SortKey
 
-@pytest.fixture
-def document_base(documents, information_nuggets, attributes) -> DocumentBase:
-    # link nuggets to documents
-    for nugget in information_nuggets:
-        nugget.document.nuggets.append(nugget)
 
-    return DocumentBase(
-        documents=documents,
-        attributes=attributes
-    )
+def test_document_base_extraction() -> DocumentBase:
+    with ResourceManager() as resource_manager:
+        statistics = Statistics(do_collect=True)
+        ################################################################################################################
+        # dataset
+        ################################################################################################################
+        
+        documents = dataset.load_dataset()
 
-def test_nugget_extraction(document_base, information_nuggets) -> None:
-    with VECTORDB as vb:
+        statistics["dataset"]["dataset_name"] = dataset.NAME
+        statistics["dataset"]["attributes"] = dataset.ATTRIBUTES
+        statistics["dataset"]["num_documents"] = len(documents)
 
-        for i in utility.list_collections():
-                utility.drop_collection(i)
+        for attribute in dataset.ATTRIBUTES:
+            statistics["dataset"]["num_mentioned"][attribute] = 0
+            for document in documents:
+                if document["mentions"][attribute]:
+                    statistics["dataset"]["num_mentioned"][attribute] += 1
 
-        vb.extract_nuggets(document_base)
+        ################################################################################################################
+        # document base
+        ################################################################################################################
+        # select the "user-provided" attribute names and create mappings between them and the dataset's attribute names
+        user_attribute_names = dataset.ATTRIBUTES
+        statistics["user_provided_attribute_names"] = user_attribute_names
+        user_attribute_name2attribute_name = {
+            u_attr_name: attr_name for u_attr_name, attr_name in zip(user_attribute_names, dataset.ATTRIBUTES)
+        }
 
-        for i in document_base.documents:
-
-            #Check if document-nugget collection was created
-            assert re.sub('[^a-zA-Z0-9 \n\.]', '_', i.name) in utility.list_collections()
-
-            #Check if document-nugget collection has the correct number of entities
-            collection = Collection(re.sub('[^a-zA-Z0-9 \n\.]', '_', i.name))
-            assert collection.num_entities == 2
-
-        #Check if correct nugget data was saved in db
-        collection = Collection("document_0")
-        collection.load()
-
-        res = collection.query(
-         expr="id != '0'",
-         offset=0,
-         limit=10,
-         output_fields=["id", "embedding_type","embedding_value"]
-        )
-
-        #LabelSignal1
-        assert len(res) == 2
-        assert res[0]['id'] == "document_0;0;22"
-        assert res[0]['embedding_type'] == "LabelEmbeddingSignal"
-        assert len(res[0]['embedding_value']) == 1024
-        for i in range(len(res[0]['embedding_value'])):
-            assert abs(res[0]['embedding_value'][i] - information_nuggets[0].signals['LabelEmbeddingSignal'].value[i]) < 0.0001
-
-      
-        assert res[1]['id'] == "document_0;56;123"
-        assert res[1]['embedding_type'] == "LabelEmbeddingSignal"
-        assert len(res[1]['embedding_value']) == 1024
-        for i in range(len(res[1]['embedding_value'])):
-            assert abs(res[1]['embedding_value'][i] - information_nuggets[1].signals['LabelEmbeddingSignal'].value[i]) < 0.0001
-
-        collection = Collection("document_1")
-        collection.load()
-
-        res = collection.query(
-         expr="id != '0'",
-         offset=0,
-         limit=10,
-         output_fields=["id", "embedding_type","embedding_value"]
+        cached_document_base = DocumentBase(
+            documents=[Document(doc["id"], doc["text"]) for doc in documents],
+            attributes=[Attribute(attribute_name) for attribute_name in user_attribute_names]
         )
 
-        #LabelSignal3
-        assert len(res) == 2
-        assert res[0]['id'] == "document_1;165;176"
-        assert res[0]['embedding_type'] == "LabelEmbeddingSignal"
-        assert len(res[0]['embedding_value']) == 1024
-        for i in range(len(res[0]['embedding_value'])):
-            assert abs(res[0]['embedding_value'][i] - information_nuggets[2].signals['LabelEmbeddingSignal'].value[i]) < 0.0001
+        ################################################################################################################
+        # preprocessing
+        ################################################################################################################
+        path = os.path.join(os.path.dirname(__file__), "..", "cache", f"exp-2-{dataset.NAME}-preprocessed.bson")
+        if not os.path.isfile(path):
 
-      
-        assert res[1]['id'] == "document_1;234;246"
-        assert res[1]['embedding_type'] == "LabelEmbeddingSignal"
-        assert len(res[1]['embedding_value']) == 1024
-        for i in range(len(res[1]['embedding_value'])):
-            assert abs(res[1]['embedding_value'][i] - information_nuggets[3].signals['LabelEmbeddingSignal'].value[i]) < 0.0001
+            wannadb_pipeline = Pipeline([
+                StanzaNERExtractor(),
+                SpacyNERExtractor("SpacyEnCoreWebLg"),
+                ContextSentenceCacher(),
+                CopyNormalizer(),
+                OntoNotesLabelParaphraser(),
+                SplitAttributeNameLabelParaphraser(do_lowercase=True, splitters=[" ", "_"]),
+                SBERTLabelEmbedder("SBERTBertLargeNliMeanTokensResource"),
+                SBERTTextEmbedder("SBERTBertLargeNliMeanTokensResource"),
+                BERTContextSentenceEmbedder("BertLargeCasedResource"),
+                CombineEmbedder()
+            ])
 
-def test_vector_search(document_base):
+            statistics["preprocessing"]["config"] = wannadb_pipeline.to_config()
+
+            wannadb_pipeline(
+                document_base=cached_document_base,
+                interaction_callback=EmptyInteractionCallback(),
+                status_callback=EmptyStatusCallback(),
+                statistics=statistics["preprocessing"]
+            )
+
+
+            # Relative path to the desired directory
+            relative_path = "cache"
+
+            # Absolute path based on the current directory
+            absolute_path = os.path.join(os.getcwd(), relative_path)
+
+            # Check if the directory exists
+            if not os.path.exists(absolute_path):
+                os.makedirs(absolute_path)
+                print(f"'{absolute_path}' was successfully created!")
+            else:
+                print(f"'{absolute_path}' already exists.")
+
+            path = os.path.join(os.path.dirname(__file__), "..", "cache",
+                                f"exp-2-{dataset.NAME}-preprocessed.bson")
+            try:
+                with open(path, "wb") as file:
+                    file.write(cached_document_base.to_bson())
+            except Exception as e:
+                print("Could not write document base to file.")
+                print(e)
+        else:
+            path = os.path.join(os.path.dirname(__file__), "..", "cache",
+                                f"exp-2-{dataset.NAME}-preprocessed.bson")
+            with open(path, "rb") as file:
+                cached_document_base = DocumentBase.from_bson(file.read())
+    document_base = copy.deepcopy(cached_document_base)
+    return document_base
+
+def test_vdb_nugget_extraction(document_base):
+    #load_test_vdb(document_base=document_base,full_embeddings=True)
+
     with vectordb() as vb:
 
-        vb.extract_nuggets(document_base)
-
-        #Check if correct nugget data was saved in db
         collection = Collection(EMBEDDING_COL_NAME)
         collection.load()
 
-        vectors_right =[create_random_float_vector_dimension_1024()]
+        print(collection.num_entities)
 
-        search_params = {"metric_type": "L2", "params": {"nprobe": 10}, "offset": 0}
-
-        results = collection.search(
-            data = vectors_right,
-            anns_field="embedding_value",
-            param=search_params,
-            limit=10,
+        res = collection.query(
+            expr = "dbid  < 10",
+            offset = 0,
+            limit = 10, 
+            output_fields = ["id", "document_id", "embedding_value"],
             )
-        assert results[0].ids 
-        assert results[0].distances
+          
+        def vectors_are_equal(vector1, vector2):
+                # Check if vector length is equal
+                assert len(vector1) == len(vector2)
+                
+                # Check if vector elements are equal
+                for i in range(len(vector1)):
+                    assert vector1[i] == vector2[i]
+        
+        for i in range(10):
+            nugget = document_base.documents[res[i]['document_id']].nuggets[res[i]['id']]
+            vbd_value=res[i]['embedding_value']
+            sec_value = nugget[CombinedEmbeddingSignal]
+            vectors_are_equal(vbd_value, sec_value)
+            assert res[i]['document_id'] == nugget.document.index
+
+        assert collection.num_entities == len(document_base.nuggets)
+
+        collection.release()
 
 
-def test_corona():
-    result_dict = compute_embedding_distances()
-    
-def test_corona_bson():
-    
-    #generate_and_store_embedding("C:\\Users\\Pascal\\Desktop\\WannaDB\\lab23_wannadb_scale-up\\datasets\\corona\\raw-documents")
-    result_dict = compute_embedding_distances()
-    time_without, distances_without = compute_embedding_distances_withoutVDB()
-    
-    workbook = xlsxwriter.Workbook("MyExcel.xlsx")
-    times_worksheet = workbook.add_worksheet("times")
-    distances_worksheet = workbook.add_worksheet("distances")
-    
-    startrow = 1
-    column = 1
-    limit_arr = []
-    
-    for nprobe, probe_dict in result_dict.items():
-        row = startrow
-        
-        times_worksheet.write(row, column, f"N_Probe = {nprobe}")
-        distances_worksheet.write(row, column, f"N_Probe = {nprobe}")
-        row +=1
-        for limit, limit_dict in probe_dict.items():
-            if not limit in limit_arr:
-                limit_arr.append(limit)
-            
-            times_worksheet.write(row, column, limit_dict["time"])
-            distances_worksheet.write(row, column, limit_dict["amount_distances"])
-            row +=1
-        
-        column += 1
-    
-    column += 1
-    
-    row = startrow
-    times_worksheet.write(row, column, "Without VDB")
-    distances_worksheet.write(row, column, "Without VDB")
-    row += 1
-    times_worksheet.write(row, column, time_without)
-    distances_worksheet.write(row, column, distances_without)
-    
-    row = startrow + 1
-    column = 1    
-    for limit in limit_arr:
-        times_worksheet.write(row, column-1, f"Limit = {limit}")
-        distances_worksheet.write(row, column-1, f"Limit = {limit}")
-        row +=1
-            
-    workbook.close()
-    
-    #print("new:")
-    #new_compute_embedding_distances()
+def test_vector_search(document_base):
+    load_test_vdb(document_base=document_base,full_embeddings=False)
+
+    with vectordb() as vb:
+         collection = Collection(EMBEDDING_COL_NAME)
+         collection.load()
+
+         attribute = document_base.attributes[0]
+         attribute_embedding = attribute[LabelEmbeddingSignal]
+
+         results = collection.search(
+                data=[attribute_embedding], 
+                anns_field="embedding_value", 
+                param=vb._search_params,
+                limit=10,
+                expr= None,
+                output_fields=['id','document_id'],
+                consistency_level="Strong"
+            )
+         
+         compute_distances_and_store(document_base, attribute, full_embeddings=False)
+
+         for i in results[0]:
+            current_document = document_base.documents[i.entity.get('document_id')]
+            current_nugget = i.entity.get('id')
+            assert 1-i.distance == current_document.nuggets[current_nugget][CachedDistanceSignal]
+             
+
+
+
+document_base = test_document_base_extraction()
+test_vdb_nugget_extraction(document_base)
+test_vector_search(document_base)

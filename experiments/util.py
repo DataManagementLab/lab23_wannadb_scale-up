@@ -200,6 +200,11 @@ def get_documentbase(dataset: str) -> DocumentBase:
 def load_test_vdb(document_base: DocumentBase, full_embeddings=False):
 
     with vectordb() as vb:
+        try: 
+            collection= Collection(EMBEDDING_COL_NAME)
+            collection.compact()
+        except:
+            pass
         collections = utility.list_collections()
 
         for collection in collections:

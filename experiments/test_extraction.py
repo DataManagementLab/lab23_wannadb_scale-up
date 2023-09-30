@@ -120,8 +120,6 @@ def test_extraction(path = "C:/Users/Pascal/Desktop\WannaDB/lab23_wannadb_scale-
 
 test_extraction()
 
-
-
 '''
         res = collection.query(
             expr = "dbid  == 0",

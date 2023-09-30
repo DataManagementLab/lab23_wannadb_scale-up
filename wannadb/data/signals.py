@@ -367,3 +367,9 @@ class CombinedEmbeddingSignal(BaseNumpyArraySignal):
     """Combined Embedding signal (contains all three essential types of embeddings) which will be stored in vector database."""
     identifier: str = "CombinedEmbeddingSignal"
     do_serialize: bool = True
+
+@register_signal
+class AdjustedCombinedSignal(BaseNumpyArraySignal):
+    """Combined Embedding signal that only contains shared signals"""
+    identifier: str = "AdjustedCombinedSignal"
+    do_serialize: bool = True

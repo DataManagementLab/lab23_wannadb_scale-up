@@ -134,6 +134,11 @@ class vectordb:
             documentBase (DocumentBase): The document base to extract data from.
         """
         logger.info("Starting vector database clear setup")
+        try: 
+            collection= Collection(EMBEDDING_COL_NAME)
+            collection.compact()
+        except:
+            pass
         collections = utility.list_collections()
 
         #clear vector database, drop existing collections and index
@@ -206,6 +211,7 @@ class vectordb:
 
                 collection.flush()
         logger.info("Finished extracting information nuggets from document base")
+        print(f"Num: {collection.num_entities}")
 
         #Vector index
         logger.info("Start indexing")
@@ -234,7 +240,7 @@ class vectordb:
         attribute_embedding = normalize(attribute_embedding.reshape(1,-1),norm='l2')
         n_docs = len(document_base.documents)
         remaining_documents: List[Document] = []
-        collection = Collection('embeddings')
+        collection = Collection(EMBEDDING_COL_NAME)
 
         # Determine the limit parameter; Lower limits for faster run-time were tested but significantly impacted accuracy results; Needs to be further tuned!
         search_limit = n_docs*20
