@@ -1,4 +1,3 @@
-import os
 from pymilvus import (
     connections,
     utility,
@@ -7,65 +6,75 @@ from pymilvus import (
     DataType,
     Collection,
 )
-
-from wannadb.data.data import DocumentBase
+import os
 from typing import List
 import time
 from wannadb.data.data import DocumentBase, Attribute, Document
 import numpy as np
 from wannadb.statistics import Statistics
-from wannadb.data.signals import LabelEmbeddingSignal, TextEmbeddingSignal, ContextSentenceEmbeddingSignal, RelativePositionSignal,UserProvidedExamplesSignal, \
-    CachedDistanceSignal, CurrentMatchIndexSignal, CombinedEmbeddingSignal, POSTagsSignal, AdjustedCombinedSignal
+from wannadb.data.signals import LabelEmbeddingSignal, TextEmbeddingSignal, ContextSentenceEmbeddingSignal, RelativePositionSignal, \
+    CachedDistanceSignal, CurrentMatchIndexSignal, CombinedEmbeddingSignal, POSTagsSignal
 from sklearn.metrics.pairwise import cosine_distances
-import datasets.skyscraper.skyscraper as dataset
-
-
 from wannadb.configuration import Pipeline
-from wannadb.data.data import Document, DocumentBase
 from wannadb.interaction import EmptyInteractionCallback
-from wannadb.preprocessing.embedding import SBERTTextEmbedder, SBERTExamplesEmbedder,BERTContextSentenceEmbedder, SBERTLabelEmbedder
+from wannadb.preprocessing.embedding import SBERTTextEmbedder,BERTContextSentenceEmbedder, SBERTLabelEmbedder
 from wannadb.preprocessing.extraction import StanzaNERExtractor, SpacyNERExtractor
 from wannadb.preprocessing.label_paraphrasing import OntoNotesLabelParaphraser, SplitAttributeNameLabelParaphraser
 from wannadb.preprocessing.normalization import CopyNormalizer
 from wannadb.preprocessing.other_processing import ContextSentenceCacher, CombineEmbedder
 from wannadb.resources import ResourceManager
-from wannadb.statistics import Statistics
 from wannadb.status import EmptyStatusCallback
+import datasets.corona.corona as dataset
 import logging
-import numpy as np
 from sklearn.preprocessing import normalize
-import pickle
-import numpy as np
 
 
 logger: logging.Logger = logging.getLogger(__name__)
 EMBEDDING_COL_NAME = "embeddings"
 BSON_FILE_NAME = "corona.bson"
 
+
 class vectordb:
+    '''
+    Class implementation for a vector database. It initializes the vector database, extracts information nuggets from a 
+    document base and loads them into the database, performs initial distance computation, updates distances, and regenerates
+    the vector database index. The singleton pattern is used for the vector database implementation.
+    '''
     ...
     _instance = None
 
     def __new__(cls, *args, **kwargs):
+        """
+        Singleton pattern implementation: Ensure only one instance of vectordb is created.
+
+        params:
+            cls (type): The class itself.
+            *args: Variable-length argument list.
+            **kwargs: Arbitrary keyword arguments.
+
+        returns:
+            vectordb: A new instance or the existing instance if one already exists.
+        """
         if not cls._instance:
             cls._instance = super(vectordb, cls).__new__(cls, *args, **kwargs)
         return cls._instance
 
     def __init__(self) -> None:
-        """Initialize the vector database"""
+        """
+        Initialize the vector database and its attributes.
+        """
         if hasattr(self, "_already_initialized"):
             return
 
         self._host = 'localhost'
         self._port = 19530
         self._embedding_identifier = ['LabelEmbeddingSignal', 'TextEmbeddingSignal', 'ContextSentenceEmbeddingSignal']
-        self._embedding_collection = None
 
         logger.info("Vector database initialized")
 
         self._already_initialized = True
 
-        # Nugget schema
+        # information nugget field schema
         self._dbid =FieldSchema(
             name="dbid",
             dtype=DataType.INT64,
@@ -99,28 +108,46 @@ class vectordb:
         }
         
     def __enter__(self) -> connections:
+        """
+        Enter method to establish a connection to the vector database.
+
+        Returns:
+            connections: The connection to the vector database.
+        """
         logger.info("Connecting to vector database")
         connections.connect(alias='default',host=self._host, port=self._port)
         return self 
    
 
     def __exit__(self, *args) -> None:
+        """
+        Exit method to disconnect from the vector database.
+        """
         logger.info("Disconnecting from vector database")
         connections.disconnect(alias='default')
     
     def setup_vdb(self, documentBase: DocumentBase) -> None:
+        """
+        Set up the vector database by creating collections and schema.
 
+        params:
+            documentBase (DocumentBase): The document base to extract data from.
+        """
+        logger.info("Starting vector database clear setup")
         collections = utility.list_collections()
 
+        #clear vector database, drop existing collections and index
         for collection in collections:
             Collection(collection).drop()
             logger.info(f'Collection {collection} has been deleted.')
 
             try:
                 collection.drop_index()
+                logger.info(f'Collection index has been deleted.')
             except:
                 pass
-
+        
+        #create collection schema
         self._embedding_value = FieldSchema( 
             name="embedding_value",
             dtype=DataType.FLOAT_VECTOR,
@@ -133,19 +160,25 @@ class vectordb:
                             enable_dynamic_field=True,
                             )
         
+        #create collection
         collection = Collection(
                     name=EMBEDDING_COL_NAME,
                     schema=embbeding_schema,
                     using="default",
                     shards_num=1,
                 )
+        
         logger.info("Created embedding collection")
         collection = Collection(EMBEDDING_COL_NAME)
+        logger.info("Finished clearing vector database setup")
 
 
     def extract_nuggets(self, documentBase: DocumentBase) -> None:
         """
-        Extract nugget data from document base
+        Extract nugget data from the document base and insert it into the vector database.
+
+        params:
+            documentBase (DocumentBase): The document base to extract data from.
         """
         self.setup_vdb(documentBase)
 
@@ -172,7 +205,8 @@ class vectordb:
                     dbid_counter = dbid_counter+1
 
                 collection.flush()
-                
+        logger.info("Finished extracting information nuggets from document base")
+
         #Vector index
         logger.info("Start indexing")
         nlist = 4 * int(np.sqrt(dbid_counter))
@@ -181,22 +215,36 @@ class vectordb:
             field_name='embedding_value', 
             index_params=self._index_params
             )   
-        logger.info("Indexing finished")
-        
-        logger.info("Embedding insertion finished")
+        logger.info("Index created and indexing finished")
+        logger.info("Preperation of nugget extraction finished")
 
 
     def compute_initial_distances(self, attribute_embedding : List[float], document_base: DocumentBase, return_times:bool = False) -> List[Document]:
+        """
+        Compute initial distances between an attribute embedding and nuggets in the document base.
+
+        param:
+            attribute_embedding (List[float]): The attribute's embedding.
+            document_base (DocumentBase): The document base containing nuggets.
+            return_times (bool): Whether to return execution times.
+
+        return:
+            List[Document]: List of documents with updated distances.
+        """
         attribute_embedding = normalize(attribute_embedding.reshape(1,-1),norm='l2')
         n_docs = len(document_base.documents)
         remaining_documents: List[Document] = []
         collection = Collection('embeddings')
 
-        #Determine Limit
+        # Determine the limit parameter; Lower limits for faster run-time were tested but significantly impacted accuracy results; Needs to be further tuned!
         search_limit = n_docs*20
         start_time = time.time()
         if search_limit < 16384:
-            
+            '''
+            Search limit is low enough to perform single vector similarity search; Max. limit = 16384
+            '''
+
+            #Execute single vector similiarity search
             results = collection.search(
                 data=attribute_embedding, 
                 anns_field="embedding_value", 
@@ -208,6 +256,7 @@ class vectordb:
             )
             search_time = time.time() - start_time
 
+            #Storing computed cosine similarities (distances) in custom structure (dict)
             start_time = time.time()
             for i in results[0]: 
                 if len(remaining_documents) < n_docs:  
@@ -225,13 +274,19 @@ class vectordb:
             update_time = time.time() - start_time
 
         else:
+            '''
+            Search limit is too high to perform single vector similarity search. Instead use some range search iterations and concatenate results of each iteration
+            It was the only technical option to execute similarity searches above 16384 -> maybe swap to other vector database provider
+            '''
+
+            #Those parameters for range search are based on some initial thoughts. We strongly believe that they can be further tuned!
             results=[]
             step_size = 5000/search_limit
             start_range = 1-step_size
             end_range = 1.0
             limit_counter =0
 
-
+            #Execute range search as long as search limit or cosine similarity of 0.0 (lower bound of search interval) is reached
             while (start_range > 0.0) and (limit_counter < search_limit): 
                 search_param = {
                     "data": attribute_embedding, 
@@ -240,7 +295,6 @@ class vectordb:
                     "limit": 16384,
                     "output_fields": ["id", "document_id"] 
                     }
-                
 
                 res = collection.search(**search_param)
                 results.append(res[0])
@@ -250,6 +304,7 @@ class vectordb:
 
             search_time = time.time() - start_time
             
+            #Storing results of range search in custom data structure
             start_time = time.time()
             flag = False
             for search_hit in results:
@@ -278,20 +333,37 @@ class vectordb:
 
     
     def updating_distances_documents(self, target_embedding: List[float], documents: List[Document], document_base : DocumentBase, return_times:bool = False):
+        """
+        Update distances for a target embedding (user selected information nugget) and a list of documents in the document base.
+
+        params:
+            target_embedding (List[float]): The target embedding to compare with nuggets.
+            documents (List[Document]): List of documents to update distances for.
+            document_base (DocumentBase): The document base containing documents and nuggets.
+            return_times (bool): Whether to return execution times.
+
+        returns:
+            Tuple[float, float]: Search time and update base time if return_times is True.
+
+        """
         target_embedding = normalize(target_embedding.reshape(1,-1), norm = 'l2')
         n_docs= len(documents)
         collection = Collection('embeddings')
         doc_indexes = [doc.index for doc in documents]
         processed = [] 
 
+        # Determine the limit parameter; Lower limits for faster run-time were tested but significantly impacted accuracy results; Needs to be further tuned!
         search_limit = n_docs*5
         if search_limit == 0:
             return
         
         start_time = time.time()
         if search_limit < 16384:
+            '''
+            Search limit is low enough to perform single vector similarity search; Max. limit = 16384
+            '''
 
-            #Compute the distance between the embeddings of the attribute and the embeddings of the nuggets
+            ##Execute single vector similiarity search
             results = collection.search(
                 data=target_embedding, 
                 anns_field="embedding_value", 
@@ -304,6 +376,7 @@ class vectordb:
 
             search_time = time.time() - start_time
             
+            #Storing computed cosine similarities (distances) in custom structure (dict)
             for i in results[0]:
                 current_document = document_base.documents[i.entity.get('document_id')]
                 if not current_document in processed:
@@ -322,12 +395,19 @@ class vectordb:
                     continue
 
         else:
+            '''
+            Search limit is too high to perform single vector similarity search. Instead use some range search iterations and concatenate results of each iteration
+            It was the only technical option to execute similarity searches above 16384 -> maybe swap to other vector database provider
+            '''
+
+            #Those parameters for range search are based on some initial thoughts. We strongly believe that they can be further tuned!
             results=[]
             step_size = 5000/search_limit
             start_range = 1-step_size
             end_range = 1.0
             limit_counter =0
 
+            #Execute range search as long as search limit or cosine similarity of 0.0 (lower bound of search interval) is reached
             while (start_range > 0.0) and (limit_counter < search_limit ): #anpassen
                 search_param = {
                     "data": target_embedding, 
@@ -345,6 +425,7 @@ class vectordb:
 
             search_time = time.time() - start_time
             
+            #Storing results of range search in custom data structure
             flag = False
             for search_hit in results:
                 for i in search_hit:
@@ -375,6 +456,15 @@ class vectordb:
             return search_time, update_base_time
 
     def regenerate_index(self, index_name, collection_name = EMBEDDING_COL_NAME, metric_type: str = 'COSINE'):
+        """
+        Regenerate and create an index for a given collection with specified index parameters.
+
+        params:
+            index_name (str): Name of the index to be generated.
+            collection_name (str): Name of the collection to regenerate the index for.
+            metric_type (str): Type of metric used for the index, e.g., 'COSINE'.
+
+        """
         self._index_params["index_type"] = index_name
         self._index_params["metric_type"] = metric_type
         collection = Collection(collection_name)
@@ -399,6 +489,11 @@ class vectordb:
         if reload_col:
             collection.load()
             
+
+
+########################################################################################################################################
+#Helper functions for vector database testing and benchmarking
+########################################################################################################################################
 
 def generate_and_store_embedding(input_path = None):
     
@@ -647,5 +742,4 @@ def compute_embedding_distances_withoutVDB(document_base):
 
 
 #generate_and_store_embedding('C:\\Users\\Pascal\\Desktop\\WannaDB\\lab23_wannadb_scale-up\\datasets\\corona\\raw-documents')
- 
 #print(compute_embedding_distances_withoutVDB())
